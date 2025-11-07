@@ -68,6 +68,15 @@ class StudyModes:
     def handle_choice(is_correct: bool, word: str, correct_meaning: str, 
                     status_label: Optional[QLabel] = None, 
                     main_window: Optional[object] = None) -> None:
+        # 记录学习数据
+        if main_window:
+            main_window.db.record_study(
+                main_window.current_vocab_id,
+                word,
+                is_correct,
+                'choice'
+            )
+        
         if is_correct:
             if status_label:
                 status_label.setText("✓ 回答正确！")
@@ -77,10 +86,9 @@ class StudyModes:
                 status_label.setText(f"✗ 回答错误！\n正确答案是：{correct_meaning}")
                 status_label.setStyleSheet("color: #F44336; font-size: 16px;")
         
-        # 延迟1.5秒后自动进入下一个单词
         from PyQt6.QtCore import QTimer
         if main_window:
-            QTimer.singleShot(1500, lambda: StudyModes.start_study(main_window))
+            QTimer.singleShot(1000, lambda: StudyModes.start_study(main_window))
 
     @staticmethod
     def save_settings(main_window):

@@ -26,6 +26,19 @@ class DatabaseManager:
                 FOREIGN KEY (vocabulary_id) REFERENCES vocabularies (id)
             )
         ''')
+
+        # 添加学习记录表
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS study_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                vocabulary_id INTEGER,
+                word TEXT,
+                is_correct BOOLEAN,
+                study_mode TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (vocabulary_id) REFERENCES vocabularies (id)
+            )
+        ''')
         self.conn.commit()
     
     def add_vocabulary(self, name: str) -> Tuple[bool, str]:
@@ -97,3 +110,31 @@ class DatabaseManager:
             words = self.get_words(vocab_id)
             for word, meaning in words:
                 words_list.addItem(f"{word}: {meaning}")
+    def record_study(self, vocab_id: int, word: str, is_correct: bool, study_mode: str):
+        self.cursor.execute('INSERT INTO study_records (vocabulary_id, word, is_correct, study_mode) VALUES (?, ?, ?, ?)',
+                            (vocab_id, word, is_correct, study_mode))
+        self.conn.commit()
+
+    def get_daily_stats(self, vocab_id: int = None):
+        if vocab_id:
+            self.cursor.execute('''
+                SELECT DATE(timestamp) as date,
+                    COUNT(*) as total_words,
+                    SUM(is_correct) as correct_words,
+                    ROUND(SUM(is_correct) * 100.0 / COUNT(*), 2) as accuracy
+                FROM study_records
+                WHERE vocabulary_id = ?
+                GROUP BY DATE(timestamp)
+                ORDER BY DATE(timestamp) DESC
+            ''', (vocab_id,))
+        else:
+            self.cursor.execute('''
+                SELECT DATE(timestamp) as date,
+                    COUNT(*) as total_words,
+                    SUM(is_correct) as correct_words,
+                    ROUND(SUM(is_correct) * 100.0 / COUNT(*), 2) as accuracy
+                FROM study_records
+                GROUP BY DATE(timestamp)
+                ORDER BY DATE(timestamp) DESC
+            ''')
+        return self.cursor.fetchall()

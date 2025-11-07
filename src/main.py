@@ -18,7 +18,17 @@ class MainWindow(QMainWindow):
         self.current_vocab_id = None
         self.study_mode = 'recognize'
         self.statusBar().showMessage('就绪')
+        
+        # 添加统计页面
+        self.stats_page = QWidget()
+        
         self.init_ui()
+
+    def update_stats(self):
+        self.stats_list.clear()
+        stats = self.db.get_daily_stats(self.current_vocab_id)
+        for date, total, correct, accuracy in stats:
+            self.stats_list.addItem(f"{date}: 学习 {total} 个单词，正确率 {accuracy}%")
         
     def init_ui(self):
         self.setWindowTitle('智能背单词')
@@ -44,6 +54,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.add_word_page)
         self.stack.addWidget(self.study_page)
         self.stack.addWidget(self.settings_page)
+        self.stack.addWidget(self.stats_page)
         
         # 初始化各个页面
         UICreator.create_main_page(self)
@@ -51,6 +62,7 @@ class MainWindow(QMainWindow):
         UICreator.create_add_word_page(self)
         UICreator.create_study_page(self)
         UICreator.create_settings_page(self)
+        UICreator.create_stats_page(self) 
         
         # 设置主布局
         layout = QVBoxLayout(central_widget)
@@ -65,7 +77,10 @@ class MainWindow(QMainWindow):
         self.db.update_vocab_combo(self.settings_vocab_combo)
         
     def switch_page(self, page):
-        if page in [self.main_page, self.vocabulary_page, self.add_word_page, self.study_page, self.settings_page]:
+        if page in [self.main_page, self.vocabulary_page, self.add_word_page, 
+                    self.study_page, self.settings_page, self.stats_page]:
+            if page == self.stats_page:
+                self.update_stats()  # 切换到统计页面时更新数据
             self.stack.setCurrentWidget(page)
         
     def on_vocab_selected(self, item):

@@ -66,12 +66,14 @@ class UICreator:
         
         btn_vocab = AnimatedButton('单词本管理')
         btn_vocab.clicked.connect(lambda: main_window.switch_page(main_window.vocabulary_page))
+        btn_stats = AnimatedButton('学习统计')
+        btn_stats.clicked.connect(lambda: main_window.switch_page(main_window.stats_page))
         btn_settings = AnimatedButton('学习设置')
         btn_settings.clicked.connect(lambda: main_window.switch_page(main_window.settings_page))
         btn_study = AnimatedButton('开始学习')
         btn_study.clicked.connect(lambda: StudyModes.start_study(main_window))
 
-        for btn in [btn_vocab, btn_settings, btn_study]:
+        for btn in [btn_vocab, btn_stats, btn_settings, btn_study]:
             btn.setMinimumHeight(50)
             layout.addWidget(btn)
 
@@ -185,6 +187,31 @@ class UICreator:
         btn_save = AnimatedButton('保存设置')
         btn_save.clicked.connect(lambda: StudyModes.save_settings(main_window))
         layout.addWidget(btn_save)
+
+    @staticmethod
+    def create_stats_page(main_window):
+        layout = QVBoxLayout(main_window.stats_page)
+        
+        btn_back = AnimatedButton('返回')
+        btn_back.clicked.connect(lambda: main_window.switch_page(main_window.main_page))
+        layout.addWidget(btn_back)
+        
+        # 添加统计显示区域
+        stats_area = QWidget()
+        stats_layout = QVBoxLayout(stats_area)
+        
+        # 显示标题
+        title = QLabel('学习统计')
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setFont(QFont('Arial', 18))
+        stats_layout.addWidget(title)
+        
+        # 显示统计数据
+        stats_list = QListWidget()
+        main_window.stats_list = stats_list  # 确保stats_list被正确赋值给main_window
+        stats_layout.addWidget(stats_list)
+        
+        layout.addWidget(stats_area)
 
     @staticmethod
     def create_study_page(main_window):
