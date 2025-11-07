@@ -39,6 +39,20 @@ class DatabaseManager:
                 FOREIGN KEY (vocabulary_id) REFERENCES vocabularies (id)
             )
         ''')
+
+        # 创建错题本表
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS wrong_words (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                vocabulary_id INTEGER,
+                word TEXT NOT NULL,
+                meaning TEXT NOT NULL,
+                first_wrong_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                wrong_count INTEGER DEFAULT 1,
+                FOREIGN KEY (vocabulary_id) REFERENCES vocabularies (id)
+            )
+        ''')
+
         self.conn.commit()
     
     def add_vocabulary(self, name: str) -> Tuple[bool, str]:
@@ -138,3 +152,21 @@ class DatabaseManager:
                 ORDER BY DATE(timestamp) DESC
             ''')
         return self.cursor.fetchall()
+    def add_wrong_word(self, vocab_id: int, word: str, meaning: str):
+        self.cursor.execute('''
+            INSERT OR REPLACE INTO wrong_words (vocabulary_id, word, meaning, wrong_count)
+            VALUES (?, ?, ?, COALESCE((SELECT wrong_count FROM wrong_words 
+            WHERE vocabulary_id = ? AND word = ?), 0) + 1)
+        ''', (vocab_id, word, meaning, vocab_id, word))
+        self.conn.commit()
+
+    def get_wrong_words(self, vocab_id: int = None):
+        if vocab_id:
+            self.cursor.execute('SELECT word, meaning, wrong_count FROM wrong_words WHERE vocabulary_id = ?', (vocab_id,))
+        else:
+            self.cursor.execute('SELECT word, meaning, wrong_count FROM wrong_words')
+        return self.cursor.fetchall()
+
+    def remove_wrong_word(self, word: str):
+        self.cursor.execute('DELETE FROM wrong_words WHERE word = ?', (word,))
+        self.conn.commit()

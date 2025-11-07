@@ -84,6 +84,10 @@ class UICreator:
         btn_stats.setup_theme_style(theme_colors)
         btn_stats.clicked.connect(lambda: main_window.switch_page(main_window.stats_page))
         
+        btn_wrong_words = AnimatedButton('错题本')
+        btn_wrong_words.setup_theme_style(theme_colors)
+        btn_wrong_words.clicked.connect(lambda: main_window.switch_page(main_window.wrong_words_page))
+        
         btn_settings = AnimatedButton('学习设置')
         btn_settings.setup_theme_style(theme_colors)
         btn_settings.clicked.connect(lambda: main_window.switch_page(main_window.settings_page))
@@ -92,7 +96,7 @@ class UICreator:
         btn_study.setup_theme_style(theme_colors)
         btn_study.clicked.connect(lambda: StudyModes.start_study(main_window))
 
-        for btn in [btn_vocab, btn_stats, btn_settings, btn_study]:
+        for btn in [btn_vocab, btn_stats, btn_wrong_words, btn_settings, btn_study]:
             btn.setMinimumHeight(50)
             layout.addWidget(btn)
 
@@ -308,6 +312,44 @@ class UICreator:
         stats_layout.addWidget(stats_list)
         
         layout.addWidget(stats_area)
+
+    @staticmethod
+    def create_wrong_words_page(main_window):
+        layout = QVBoxLayout(main_window.wrong_words_page)
+        theme_colors = main_window.theme_manager._themes[main_window.theme_manager.get_current_theme()]
+        
+        # 返回按钮
+        btn_back = AnimatedButton('返回')
+        btn_back.setup_theme_style(theme_colors)
+        btn_back.clicked.connect(lambda: main_window.switch_page(main_window.main_page))
+        layout.addWidget(btn_back)
+        
+        # 标题
+        title = QLabel('错题本')
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setFont(QFont('Arial', 18))
+        layout.addWidget(title)
+        
+        # 错题列表
+        main_window.wrong_words_list = QListWidget()
+        layout.addWidget(main_window.wrong_words_list)
+        
+        # 按钮布局
+        button_layout = QHBoxLayout()
+        
+        # 清除错题按钮
+        btn_clear = AnimatedButton('清除错题')
+        btn_clear.setup_theme_style(theme_colors)
+        btn_clear.clicked.connect(main_window.clear_wrong_word)
+        button_layout.addWidget(btn_clear)
+        
+        # 清空错题本按钮
+        btn_clear_all = AnimatedButton('清空错题本')
+        btn_clear_all.setup_theme_style(theme_colors)
+        btn_clear_all.clicked.connect(main_window.clear_all_wrong_words)
+        button_layout.addWidget(btn_clear_all)
+        
+        layout.addLayout(button_layout)
 
     @staticmethod
     def create_study_page(main_window):

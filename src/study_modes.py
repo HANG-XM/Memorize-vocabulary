@@ -5,6 +5,7 @@ import random
 from typing import Optional
 import csv
 from theme_manager import Theme
+
 class StudyModes:
     # 添加类变量来跟踪进度
     current_word_index = 0
@@ -57,7 +58,7 @@ class StudyModes:
         
         study_layout.addWidget(button_container)
         
-        return btn_know, btn_unknown
+        return btn_know, btn_unknown, word, meaning
         
     @staticmethod
     def show_meaning(meaning: str, status_label: QLabel) -> None:
@@ -79,6 +80,14 @@ class StudyModes:
         StudyModes.current_word_index += 1
         if is_correct:
             StudyModes.correct_count += 1
+        else:
+            # 记录错题
+            if main_window:
+                main_window.db.add_wrong_word(
+                    main_window.current_vocab_id,
+                    word,
+                    correct_meaning
+                )
         
         # 更新进度条
         for i in range(main_window.study_layout.count()):
@@ -193,7 +202,7 @@ class StudyModes:
             buttons.append((btn, is_correct))
             study_layout.addWidget(btn)
             
-        return buttons
+        return buttons, word, correct_meaning
 
     @staticmethod
     def create_spell_mode(study_layout, words):
@@ -225,13 +234,20 @@ class StudyModes:
         btn_check = AnimatedButton('检查答案')
         study_layout.addWidget(btn_check)
         
-        return spell_input, btn_check, word
+        return spell_input, btn_check, word, meaning
 
     @staticmethod
-    def handle_recognize(main_window, known):
+    def handle_recognize(main_window, known, word, meaning):
         StudyModes.current_word_index += 1
         if known:
             StudyModes.correct_count += 1
+        else:
+            # 记录错题
+            main_window.db.add_wrong_word(
+                main_window.current_vocab_id,
+                word,
+                meaning
+            )
         
         # 更新进度条
         progress_bar = None
@@ -244,12 +260,12 @@ class StudyModes:
         
         # 记录学习数据
         vocab_id = getattr(main_window, 'current_vocab_id', None)
-        if vocab_id and hasattr(main_window, 'current_word'):
+        if vocab_id:
             main_window.db.record_study(
                 vocab_id,
-                main_window.current_word[0],  # 单词
-                known,  # 是否正确
-                'recognize'  # 学习模式
+                word,
+                known,
+                'recognize'
             )
         
         # 检查是否完成所有单词
@@ -279,7 +295,7 @@ class StudyModes:
         StudyModes.next_word(main_window)
 
     @staticmethod
-    def check_spelling(main_window, input_word, correct_word, words):
+    def check_spelling(main_window, input_word, correct_word, correct_meaning, words):
         StudyModes.current_word_index += 1
         is_correct = input_word.lower() == correct_word.lower()
         
@@ -288,6 +304,12 @@ class StudyModes:
             main_window.statusBar().showMessage('拼写正确！', 2000)
         else:
             main_window.statusBar().showMessage(f'拼写错误！正确答案是：{correct_word}', 3000)
+            # 记录错题
+            main_window.db.add_wrong_word(
+                main_window.current_vocab_id,
+                correct_word,
+                correct_meaning
+            )
         
         # 更新进度条
         for i in range(main_window.study_layout.count()):
@@ -351,11 +373,11 @@ class StudyModes:
         # 使用保存的学习模式
         mode = getattr(main_window, 'study_mode', 'recognize')
         if mode == 'recognize':
-            btn_know, btn_unknown = StudyModes.create_recognize_mode(main_window.study_layout, words)
-            btn_know.clicked.connect(lambda: StudyModes.handle_recognize(main_window, True))
-            btn_unknown.clicked.connect(lambda: StudyModes.handle_recognize(main_window, False))
+            btn_know, btn_unknown, word, meaning = StudyModes.create_recognize_mode(main_window.study_layout, words)
+            btn_know.clicked.connect(lambda: StudyModes.handle_recognize(main_window, True, word, meaning))
+            btn_unknown.clicked.connect(lambda: StudyModes.handle_recognize(main_window, False, word, meaning))
         elif mode == 'choice':
-            buttons = StudyModes.create_choice_mode(main_window.study_layout, words, main_window=main_window)
+            buttons, word, correct_meaning = StudyModes.create_choice_mode(main_window.study_layout, words, main_window=main_window)
         elif mode == 'spell':
-            spell_input, btn_check, correct_word = StudyModes.create_spell_mode(main_window.study_layout, words)
-            btn_check.clicked.connect(lambda: StudyModes.check_spelling(main_window, spell_input.text(), correct_word, words))
+            spell_input, btn_check, correct_word, correct_meaning = StudyModes.create_spell_mode(main_window.study_layout, words)
+            btn_check.clicked.connect(lambda: StudyModes.check_spelling(main_window, spell_input.text(), correct_word, correct_meaning, words))
