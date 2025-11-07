@@ -170,3 +170,58 @@ class DatabaseManager:
     def remove_wrong_word(self, word: str):
         self.cursor.execute('DELETE FROM wrong_words WHERE word = ?', (word,))
         self.conn.commit()
+    def get_detailed_stats(self, vocab_id: int = None):
+        if vocab_id:
+            self.cursor.execute('''
+                SELECT 
+                    DATE(timestamp) as date,
+                    study_mode,
+                    COUNT(*) as total_words,
+                    SUM(is_correct) as correct_words,
+                    ROUND(SUM(is_correct) * 100.0 / COUNT(*), 2) as accuracy
+                FROM study_records
+                WHERE vocabulary_id = ?
+                GROUP BY DATE(timestamp), study_mode
+                ORDER BY DATE(timestamp) DESC, study_mode
+            ''', (vocab_id,))
+        else:
+            self.cursor.execute('''
+                SELECT 
+                    DATE(timestamp) as date,
+                    study_mode,
+                    COUNT(*) as total_words,
+                    SUM(is_correct) as correct_words,
+                    ROUND(SUM(is_correct) * 100.0 / COUNT(*), 2) as accuracy
+                FROM study_records
+                GROUP BY DATE(timestamp), study_mode
+                ORDER BY DATE(timestamp) DESC, study_mode
+            ''')
+        return self.cursor.fetchall()
+
+    def get_weekly_stats(self, vocab_id: int = None):
+        if vocab_id:
+            self.cursor.execute('''
+                SELECT 
+                    strftime('%Y-%W', timestamp) as week,
+                    COUNT(*) as total_words,
+                    SUM(is_correct) as correct_words,
+                    ROUND(SUM(is_correct) * 100.0 / COUNT(*), 2) as accuracy
+                FROM study_records
+                WHERE vocabulary_id = ?
+                GROUP BY strftime('%Y-%W', timestamp)
+                ORDER BY week DESC
+                LIMIT 8
+            ''', (vocab_id,))
+        else:
+            self.cursor.execute('''
+                SELECT 
+                    strftime('%Y-%W', timestamp) as week,
+                    COUNT(*) as total_words,
+                    SUM(is_correct) as correct_words,
+                    ROUND(SUM(is_correct) * 100.0 / COUNT(*), 2) as accuracy
+                FROM study_records
+                GROUP BY strftime('%Y-%W', timestamp)
+                ORDER BY week DESC
+                LIMIT 8
+            ''')
+        return self.cursor.fetchall()

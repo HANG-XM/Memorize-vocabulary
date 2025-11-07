@@ -2,7 +2,7 @@ import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QTextEdit, QMessageBox, QInputDialog,
-    QDialog, QStackedWidget, QFileDialog
+    QDialog, QStackedWidget, QFileDialog, QComboBox, QListWidget
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -361,7 +361,52 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(message, 2000)
         else:
             self.statusBar().showMessage(message, 2000)
-
+    def create_stats_page(self):
+        layout = QVBoxLayout(self.stats_page)
+        theme_colors = self.theme_manager._themes[self.theme_manager.get_current_theme()]
+        
+        btn_back = AnimatedButton('返回')
+        btn_back.setup_theme_style(theme_colors)
+        btn_back.clicked.connect(lambda: self.switch_page(self.main_page))
+        layout.addWidget(btn_back)
+        
+        # 添加统计类型选择
+        self.stats_type_combo = QComboBox()
+        self.stats_type_combo.addItems(['每日统计', '每周统计', '详细统计'])
+        self.stats_type_combo.currentTextChanged.connect(self.update_stats_display)
+        layout.addWidget(self.stats_type_combo)
+        
+        # 添加统计显示区域
+        stats_area = QWidget()
+        stats_layout = QVBoxLayout(stats_area)
+        
+        # 显示标题
+        title = QLabel('学习统计')
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setFont(QFont('Arial', 18))
+        stats_layout.addWidget(title)
+        
+        # 显示统计数据
+        self.stats_list = QListWidget()
+        stats_layout.addWidget(self.stats_list)
+        
+        layout.addWidget(stats_area)
+    def update_stats_display(self):
+        self.stats_list.clear()
+        stats_type = self.stats_type_combo.currentText()
+        
+        if stats_type == '每日统计':
+            stats = self.db.get_daily_stats(self.current_vocab_id)
+            for date, total, correct, accuracy in stats:
+                self.stats_list.addItem(f"{date}: 学习 {total} 个单词，正确率 {accuracy}%")
+        elif stats_type == '每周统计':
+            stats = self.db.get_weekly_stats(self.current_vocab_id)
+            for week, total, correct, accuracy in stats:
+                self.stats_list.addItem(f"第{week}周: 学习 {total} 个单词，正确率 {accuracy}%")
+        elif stats_type == '详细统计':
+            stats = self.db.get_detailed_stats(self.current_vocab_id)
+            for date, mode, total, correct, accuracy in stats:
+                self.stats_list.addItem(f"{date} [{mode}]: 学习 {total} 个单词，正确率 {accuracy}%")
 def main():
     app = QApplication(sys.argv)
     

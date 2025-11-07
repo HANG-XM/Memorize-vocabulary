@@ -296,6 +296,12 @@ class UICreator:
         btn_back.clicked.connect(lambda: main_window.switch_page(main_window.main_page))
         layout.addWidget(btn_back)
         
+        # 添加统计类型选择
+        main_window.stats_type_combo = QComboBox()
+        main_window.stats_type_combo.addItems(['每日统计', '每周统计', '详细统计'])
+        main_window.stats_type_combo.currentTextChanged.connect(main_window.update_stats_display)
+        layout.addWidget(main_window.stats_type_combo)
+        
         # 添加统计显示区域
         stats_area = QWidget()
         stats_layout = QVBoxLayout(stats_area)
@@ -307,9 +313,8 @@ class UICreator:
         stats_layout.addWidget(title)
         
         # 显示统计数据
-        stats_list = QListWidget()
-        main_window.stats_list = stats_list  # 确保stats_list被正确赋值给main_window
-        stats_layout.addWidget(stats_list)
+        main_window.stats_list = QListWidget()
+        stats_layout.addWidget(main_window.stats_list)
         
         layout.addWidget(stats_area)
 
