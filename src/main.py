@@ -9,10 +9,12 @@ from PyQt6.QtGui import QFont
 from data_manager import DatabaseManager
 from ui_components import AnimatedButton, UICreator
 from study_modes import StudyModes
-
+from theme_manager import ThemeManager, Theme
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.theme_manager = ThemeManager()
+        self.theme_manager.theme_changed.connect(self.apply_theme)
         self.db = DatabaseManager()
         self.current_vocabulary = None
         self.current_vocab_id = None
@@ -23,7 +25,125 @@ class MainWindow(QMainWindow):
         self.stats_page = QWidget()
         
         self.init_ui()
+    def apply_theme(self, theme_name):
+        theme_colors = self.theme_manager._themes[Theme(theme_name)]
+        
+        # 设置主窗口样式
+        self.setStyleSheet(f"""
+            QMainWindow {{
+                background-color: {theme_colors['background']};
+                color: {theme_colors['text']};
+            }}
+            QLabel {{
+                color: {theme_colors['text']};
+                font-size: 14px;
+            }}
+            QLineEdit, QTextEdit {{
+                background-color: {theme_colors['button']};
+                color: {theme_colors['text']};
+                border: 1px solid {theme_colors['border']};
+                padding: 5px;
+                border-radius: 4px;
+            }}
+            QLineEdit:focus, QTextEdit:focus {{
+                border: 2px solid {theme_colors['accent']};
+            }}
+            QListWidget {{
+                background-color: {theme_colors['list_bg']};
+                color: {theme_colors['list_text']};
+                border: 1px solid {theme_colors['border']};
+                border-radius: 4px;
+                padding: 5px;
+            }}
+            QListWidget::item {{
+                padding: 5px;
+                border-bottom: 1px solid {theme_colors['border']};
+            }}
+            QListWidget::item:selected {{
+                background-color: {theme_colors['list_selected']};
+                color: white;
+            }}
+            QComboBox {{
+                background-color: {theme_colors['combo_bg']};
+                color: {theme_colors['combo_text']};
+                border: 1px solid {theme_colors['border']};
+                padding: 5px;
+                border-radius: 4px;
+            }}
+            QComboBox::drop-down {{
+                border: none;
+                width: 20px;
+            }}
+            QComboBox::down-arrow {{
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid {theme_colors['combo_text']};
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {theme_colors['combo_bg']};
+                color: {theme_colors['combo_text']};
+                selection-background-color: {theme_colors['list_selected']};
+            }}
+            QRadioButton {{
+                color: {theme_colors['radio_text']};
+                spacing: 8px;
+            }}
+            QRadioButton::indicator {{
+                width: 16px;
+                height: 16px;
+                border: 2px solid {theme_colors['border']};
+                border-radius: 8px;
+                background-color: {theme_colors['button']};
+            }}
+            QRadioButton::indicator:checked {{
+                background-color: {theme_colors['radio_indicator']};
+                border-color: {theme_colors['radio_indicator']};
+            }}
+            QRadioButton::indicator:hover {{
+                border-color: {theme_colors['accent']};
+            }}
+            QProgressBar {{
+                border: 1px solid {theme_colors['border']};
+                border-radius: 4px;
+                text-align: center;
+                color: {theme_colors['text']};
+            }}
+            QProgressBar::chunk {{
+                background-color: {theme_colors['accent']};
+                border-radius: 3px;
+            }}
+        """)
+        
+        # 更新所有子窗口部件
+        self.update_children_theme(self.centralWidget(), theme_colors)
 
+    def update_children_theme(self, widget, theme_colors):
+        for child in widget.children():
+            if isinstance(child, AnimatedButton):
+                child.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {theme_colors['button']};
+                        color: {theme_colors['text']};
+                        border: 1px solid {theme_colors['border']};
+                        padding: 8px 16px;
+                        border-radius: 4px;
+                        font-weight: 500;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {theme_colors['button_hover']};
+                        border: 1px solid {theme_colors['accent']};
+                    }}
+                    QPushButton:pressed {{
+                        background-color: {theme_colors['accent']};
+                        color: white;
+                    }}
+                    QPushButton:disabled {{
+                        background-color: {theme_colors['border']};
+                        color: {theme_colors['secondary']};
+                    }}
+                """)
+            self.update_children_theme(child, theme_colors)
     def update_stats(self):
         self.stats_list.clear()
         stats = self.db.get_daily_stats(self.current_vocab_id)

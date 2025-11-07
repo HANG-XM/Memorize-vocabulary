@@ -4,7 +4,7 @@ from PyQt6.QtGui import QFont
 import random
 from typing import Optional
 import csv
-
+from theme_manager import Theme
 class StudyModes:
     # 添加类变量来跟踪进度
     current_word_index = 0
@@ -120,6 +120,15 @@ class StudyModes:
 
     @staticmethod
     def save_settings(main_window):
+        # 保存主题设置
+        if main_window.theme_radio_light.isChecked():
+            main_window.theme_manager.set_theme(Theme.LIGHT)
+        elif main_window.theme_radio_dark.isChecked():
+            main_window.theme_manager.set_theme(Theme.DARK)
+        elif main_window.theme_radio_blue.isChecked():
+            main_window.theme_manager.set_theme(Theme.BLUE)
+        elif main_window.theme_radio_green.isChecked():
+            main_window.theme_manager.set_theme(Theme.GREEN)
         # 保存选中的单词本
         vocab_id = main_window.settings_vocab_combo.currentData()
         if not vocab_id:
