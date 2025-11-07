@@ -2,7 +2,7 @@ import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QTextEdit, QMessageBox, QInputDialog,
-    QDialog, QStackedWidget
+    QDialog, QStackedWidget, QFileDialog
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -148,7 +148,23 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(self, '成功', message)
             else:
                 QMessageBox.warning(self, '错误', message)
-                
+    def export_vocabulary(self):
+        if not self.current_vocabulary:
+            QMessageBox.warning(self, '提示', '请先选择要导出的单词本！')
+            return
+        
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, '导出单词本', 
+            f'vocabulary_{self.current_vocabulary}.csv',
+            'CSV文件 (*.csv)'
+        )
+        
+        if file_path:
+            success, message = self.db.export_vocabulary(self.current_vocabulary, file_path)
+            if success:
+                QMessageBox.information(self, '成功', message)
+            else:
+                QMessageBox.warning(self, '错误', message)                
     def delete_vocabulary(self):
         current_item = self.vocab_list.currentItem()
         if current_item:

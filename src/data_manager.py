@@ -1,6 +1,6 @@
 import sqlite3
 from typing import List, Tuple, Optional
-
+import csv
 class DatabaseManager:
     def __init__(self, db_name='vocabulary.db'):
         self.conn = sqlite3.connect(db_name)
@@ -48,7 +48,16 @@ class DatabaseManager:
     def get_vocabularies(self):
         self.cursor.execute('SELECT id, name FROM vocabularies')
         return self.cursor.fetchall()
-    
+    def export_vocabulary(self, vocab_id: int, file_path: str) -> Tuple[bool, str]:
+        try:
+            words = self.get_words(vocab_id)
+            with open(file_path, 'w', newline='', encoding='utf-8-sig') as file:  # 使用utf-8-sig编码
+                writer = csv.writer(file)
+                writer.writerow(['单词', '释义'])  # 写入标题行
+                writer.writerows(words)
+            return True, "导出成功"
+        except Exception as e:
+            return False, f"导出失败：{str(e)}"
     def add_word(self, word: str, meaning: str, vocab_id: int) -> Tuple[bool, str]:
         try:
             if not word.strip() or not meaning.strip():

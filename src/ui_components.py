@@ -115,9 +115,12 @@ class UICreator:
         btn_edit_word.clicked.connect(main_window.edit_word)
         btn_delete_word = AnimatedButton('删除单词')
         btn_delete_word.clicked.connect(main_window.delete_word)
+        btn_export = AnimatedButton('导出单词本')
+        btn_export.clicked.connect(lambda: main_window.export_vocabulary())
         word_btn_layout.addWidget(btn_add_word)
         word_btn_layout.addWidget(btn_edit_word)
         word_btn_layout.addWidget(btn_delete_word)
+        word_btn_layout.addWidget(btn_export)
         right_layout.addLayout(word_btn_layout)
         
         layout.addLayout(left_layout, stretch=1)

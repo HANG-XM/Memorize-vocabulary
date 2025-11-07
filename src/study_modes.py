@@ -3,7 +3,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 import random
 from typing import Optional
-
+import csv
 class StudyModes:
     @staticmethod
     def create_recognize_mode(study_layout, words):
