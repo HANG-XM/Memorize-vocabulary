@@ -4,18 +4,26 @@ from PyQt6.QtGui import QFont
 import random
 from typing import Optional
 import csv
+
 class StudyModes:
+    # 添加类变量来跟踪进度
+    current_word_index = 0
+    total_words = 0
+    correct_count = 0
+
     @staticmethod
     def create_recognize_mode(study_layout, words):
         from ui_components import AnimatedButton
+        
+        # 随机选择一个单词
         word, meaning = random.choice(words)
         
         # 创建进度指示器
         progress_layout = QHBoxLayout()
         progress_label = QLabel("学习进度：")
         progress_bar = QProgressBar()
-        progress_bar.setRange(0, len(words))
-        progress_bar.setValue(0)
+        progress_bar.setRange(0, StudyModes.total_words)
+        progress_bar.setValue(StudyModes.current_word_index)
         progress_layout.addWidget(progress_label)
         progress_layout.addWidget(progress_bar)
         study_layout.addLayout(progress_layout)
@@ -68,6 +76,17 @@ class StudyModes:
     def handle_choice(is_correct: bool, word: str, correct_meaning: str, 
                     status_label: Optional[QLabel] = None, 
                     main_window: Optional[object] = None) -> None:
+        StudyModes.current_word_index += 1
+        if is_correct:
+            StudyModes.correct_count += 1
+        
+        # 更新进度条
+        for i in range(main_window.study_layout.count()):
+            widget = main_window.study_layout.itemAt(i).widget()
+            if isinstance(widget, QProgressBar):
+                widget.setValue(StudyModes.current_word_index)
+                break
+        
         # 记录学习数据
         if main_window:
             main_window.db.record_study(
@@ -76,6 +95,15 @@ class StudyModes:
                 is_correct,
                 'choice'
             )
+        
+        # 检查是否完成所有单词
+        if StudyModes.current_word_index >= StudyModes.total_words:
+            QMessageBox.information(main_window, '完成', 
+                f'学习完成！\n总单词数：{StudyModes.total_words}\n'
+                f'正确单词数：{StudyModes.correct_count}\n'
+                f'正确率：{StudyModes.correct_count * 100 / StudyModes.total_words:.1f}%')
+            main_window.switch_page(main_window.main_page)
+            return
         
         if is_correct:
             if status_label:
@@ -115,6 +143,16 @@ class StudyModes:
         from ui_components import AnimatedButton
         word, correct_meaning = random.choice(words)
         
+        # 创建进度指示器
+        progress_layout = QHBoxLayout()
+        progress_label = QLabel("学习进度：")
+        progress_bar = QProgressBar()
+        progress_bar.setRange(0, StudyModes.total_words)
+        progress_bar.setValue(StudyModes.current_word_index)
+        progress_layout.addWidget(progress_label)
+        progress_layout.addWidget(progress_bar)
+        study_layout.addLayout(progress_layout)
+        
         # 显示单词
         word_label = QLabel(word)
         word_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -153,6 +191,16 @@ class StudyModes:
         from ui_components import AnimatedButton
         word, meaning = random.choice(words)
         
+        # 创建进度指示器
+        progress_layout = QHBoxLayout()
+        progress_label = QLabel("学习进度：")
+        progress_bar = QProgressBar()
+        progress_bar.setRange(0, StudyModes.total_words)
+        progress_bar.setValue(StudyModes.current_word_index)
+        progress_layout.addWidget(progress_label)
+        progress_layout.addWidget(progress_bar)
+        study_layout.addLayout(progress_layout)
+        
         # 显示释义
         meaning_label = QLabel(meaning)
         meaning_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -172,11 +220,39 @@ class StudyModes:
 
     @staticmethod
     def handle_recognize(main_window, known):
+        StudyModes.current_word_index += 1
         if known:
-            main_window.statusBar().showMessage('已标记为认识', 2000)
-        else:
-            main_window.statusBar().showMessage('已标记为不认识', 2000)
+            StudyModes.correct_count += 1
+        
+        # 更新进度条
+        progress_bar = None
+        for i in range(main_window.study_layout.count()):
+            widget = main_window.study_layout.itemAt(i).widget()
+            if isinstance(widget, QProgressBar):
+                progress_bar = widget
+                progress_bar.setValue(StudyModes.current_word_index)
+                break
+        
+        # 记录学习数据
         vocab_id = getattr(main_window, 'current_vocab_id', None)
+        if vocab_id and hasattr(main_window, 'current_word'):
+            main_window.db.record_study(
+                vocab_id,
+                main_window.current_word[0],  # 单词
+                known,  # 是否正确
+                'recognize'  # 学习模式
+            )
+        
+        # 检查是否完成所有单词
+        if StudyModes.current_word_index >= StudyModes.total_words:
+            QMessageBox.information(main_window, '完成', 
+                f'学习完成！\n总单词数：{StudyModes.total_words}\n'
+                f'认识单词数：{StudyModes.correct_count}\n'
+                f'正确率：{StudyModes.correct_count * 100 / StudyModes.total_words:.1f}%')
+            main_window.switch_page(main_window.main_page)
+            return
+        
+        # 继续下一个单词
         words = main_window.db.get_words(vocab_id)
         main_window.current_word = random.choice(words)
         StudyModes.start_study(main_window)
@@ -195,10 +271,41 @@ class StudyModes:
 
     @staticmethod
     def check_spelling(main_window, input_word, correct_word, words):
-        if input_word.lower() == correct_word.lower():
+        StudyModes.current_word_index += 1
+        is_correct = input_word.lower() == correct_word.lower()
+        
+        if is_correct:
+            StudyModes.correct_count += 1
             main_window.statusBar().showMessage('拼写正确！', 2000)
         else:
             main_window.statusBar().showMessage(f'拼写错误！正确答案是：{correct_word}', 3000)
+        
+        # 更新进度条
+        for i in range(main_window.study_layout.count()):
+            widget = main_window.study_layout.itemAt(i).widget()
+            if isinstance(widget, QProgressBar):
+                widget.setValue(StudyModes.current_word_index)
+                break
+        
+        # 记录学习数据
+        vocab_id = getattr(main_window, 'current_vocab_id', None)
+        if vocab_id:
+            main_window.db.record_study(
+                vocab_id,
+                correct_word,
+                is_correct,
+                'spell'
+            )
+        
+        # 检查是否完成所有单词
+        if StudyModes.current_word_index >= StudyModes.total_words:
+            QMessageBox.information(main_window, '完成', 
+                f'学习完成！\n总单词数：{StudyModes.total_words}\n'
+                f'正确单词数：{StudyModes.correct_count}\n'
+                f'正确率：{StudyModes.correct_count * 100 / StudyModes.total_words:.1f}%')
+            main_window.switch_page(main_window.main_page)
+            return
+        
         StudyModes.next_word(main_window)
 
     @staticmethod
@@ -217,7 +324,13 @@ class StudyModes:
         if not words:
             QMessageBox.warning(main_window, '错误', '该单词本中没有单词！')
             return
-            
+        
+        # 初始化进度跟踪
+        if not hasattr(StudyModes, 'current_word_index') or StudyModes.current_word_index >= StudyModes.total_words:
+            StudyModes.current_word_index = 0
+            StudyModes.total_words = len(words)
+            StudyModes.correct_count = 0
+        
         # 清除现有内容
         while main_window.study_layout.count():
             item = main_window.study_layout.takeAt(0)
@@ -229,7 +342,7 @@ class StudyModes:
         # 使用保存的学习模式
         mode = getattr(main_window, 'study_mode', 'recognize')
         if mode == 'recognize':
-            btn_know, btn_unknown = StudyModes.create_recognize_mode(main_window.study_layout, [main_window.current_word])
+            btn_know, btn_unknown = StudyModes.create_recognize_mode(main_window.study_layout, words)
             btn_know.clicked.connect(lambda: StudyModes.handle_recognize(main_window, True))
             btn_unknown.clicked.connect(lambda: StudyModes.handle_recognize(main_window, False))
         elif mode == 'choice':
