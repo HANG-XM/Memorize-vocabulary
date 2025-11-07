@@ -1,4 +1,6 @@
 .venv/
 __pycache__/
+build/
+dist/
 
-vacabularys.db
+vocabulary.db
