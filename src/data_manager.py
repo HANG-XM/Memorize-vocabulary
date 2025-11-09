@@ -251,3 +251,10 @@ class DatabaseManager:
         words = self.cursor.fetchall()
         # 添加序号
         return [(f"{i+1}. {word}", meanings) for i, (word, meanings) in enumerate(words)]
+    def get_word_pos_meanings(self, word: str, vocab_id: int):
+        self.cursor.execute('''
+            SELECT pos, meaning
+            FROM word_pos_meanings
+            WHERE vocabulary_id = ? AND word = ?
+        ''', (vocab_id, word))
+        return self.cursor.fetchall()

@@ -246,11 +246,16 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, '提示', '请先选择要修改的单词！')
             return
             
-        word, meaning = current_item.text().split(": ", 1)
+        # 从带序号的文本中提取原始单词
+        text = current_item.text().split(": ", 1)[0]
+        word = text.split(". ", 1)[1] if ". " in text else text
+        
+        # 获取该单词的所有词性和释义
+        pos_meanings = self.db.get_word_pos_meanings(word, self.current_vocabulary)
         
         dialog = QDialog(self)
         dialog.setWindowTitle('修改单词')
-        dialog.setMinimumWidth(400)
+        dialog.setMinimumWidth(500)
         layout = QVBoxLayout(dialog)
         layout.setSpacing(10)
         
@@ -260,12 +265,62 @@ class MainWindow(QMainWindow):
         layout.addWidget(word_label)
         layout.addWidget(word_input)
         
-        # 添加释义输入框
-        meaning_label = QLabel('释义：')
-        meaning_input = QTextEdit(meaning)
-        meaning_input.setMaximumHeight(100)
-        layout.addWidget(meaning_label)
-        layout.addWidget(meaning_input)
+        # 创建词性释义输入区域
+        pos_meaning_container = QWidget()
+        pos_meaning_layout = QVBoxLayout(pos_meaning_container)
+        pos_meaning_layout.setSpacing(10)
+        
+        pos_title = QLabel('词性与释义：')
+        pos_title.setFont(QFont('Arial', 12, QFont.Weight.Bold))
+        pos_meaning_layout.addWidget(pos_title)
+        
+        # 为每个词性释义创建输入框
+        from ui_components import UICreator
+        for pos, meaning in pos_meanings:
+            pair_widget = QWidget()
+            pair_layout = QHBoxLayout(pair_widget)
+            pair_layout.setSpacing(10)
+            
+            # 词性选择下拉框
+            pos_combo = QComboBox()
+            pos_combo.addItems(['n.', 'adj.', 'adv.', 'v.', 'prep.', 'conj.', 'pron.', 'art.', 'num.', 'interj.'])
+            pos_combo.setCurrentText(pos)
+            pos_combo.setMinimumWidth(80)
+            pair_layout.addWidget(QLabel('词性：'))
+            pair_layout.addWidget(pos_combo)
+            
+            # 释义输入框
+            meaning_input = QTextEdit()
+            meaning_input.setPlaceholderText('输入该词性下的释义')
+            meaning_input.setMaximumHeight(60)
+            meaning_input.setMinimumWidth(200)
+            meaning_input.setPlainText(meaning)
+            pair_layout.addWidget(QLabel('释义：'))
+            pair_layout.addWidget(meaning_input)
+            
+            # 删除按钮
+            delete_button = AnimatedButton('删除')
+            delete_button.setup_theme_style(self.theme_manager._themes[self.theme_manager.get_current_theme()])
+            delete_button.setMaximumWidth(60)
+            delete_button.clicked.connect(lambda: pos_meaning_layout.removeWidget(pair_widget))
+            pair_layout.addWidget(delete_button)
+            
+            pos_meaning_layout.addWidget(pair_widget)
+        
+        # 添加新词性的按钮
+        add_pos_button = AnimatedButton('添加词性')
+        add_pos_button.setup_theme_style(self.theme_manager._themes[self.theme_manager.get_current_theme()])
+        add_pos_button.clicked.connect(lambda: UICreator.add_pos_meaning_pair(dialog))
+        pos_meaning_layout.addWidget(add_pos_button)
+        
+        # 创建滚动区域
+        from PyQt6.QtWidgets import QScrollArea
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setMinimumHeight(200)
+        scroll_area.setWidget(pos_meaning_container)
+        layout.addWidget(scroll_area)
         
         # 添加按钮
         button_layout = QHBoxLayout()
@@ -282,14 +337,31 @@ class MainWindow(QMainWindow):
         # 显示对话框
         if dialog.exec() == QDialog.DialogCode.Accepted:
             new_word = word_input.text().strip()
-            new_meaning = meaning_input.toPlainText().strip()
             
-            if new_word and new_meaning:
-                # 更新数据库
-                self.db.update_word(word, new_word, new_meaning, self.current_vocabulary)
-                # 更新显示
-                self.db.update_words_list(self.words_list, self.current_vocabulary)
-                self.statusBar().showMessage('单词修改成功！', 2000)
+            # 获取所有词性释义对
+            new_pos_meanings = []
+            for i in range(pos_meaning_layout.count()):
+                pair_widget = pos_meaning_layout.itemAt(i).widget()
+                if pair_widget and isinstance(pair_widget, QWidget):
+                    pos_combo = pair_widget.findChild(QComboBox)
+                    meaning_input = pair_widget.findChild(QTextEdit)
+                    if pos_combo and meaning_input:
+                        pos = pos_combo.currentText()
+                        meaning = meaning_input.toPlainText().strip()
+                        if meaning:  # 只添加有释义的词性
+                            new_pos_meanings.append((pos, meaning))
+            
+            if new_word and new_pos_meanings:
+                # 先删除原有的词性释义
+                self.db.delete_word(word, self.current_vocabulary)
+                # 添加新的词性释义
+                success, message = self.db.add_word_with_pos_meanings(new_word, new_pos_meanings, self.current_vocabulary)
+                
+                if success:
+                    self.db.update_words_list(self.words_list, self.current_vocabulary)
+                    self.statusBar().showMessage('单词修改成功！', 2000)
+                else:
+                    self.statusBar().showMessage(message, 2000)
             else:
                 self.statusBar().showMessage('请填写完整信息！', 2000)
     def search_word(self):
