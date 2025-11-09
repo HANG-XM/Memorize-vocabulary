@@ -15,26 +15,16 @@ class DatabaseManager:
                 name TEXT UNIQUE NOT NULL
             )
         ''')
-        
-        # 创建单词表
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS words (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                word TEXT NOT NULL,
-                meaning TEXT NOT NULL,
-                vocabulary_id INTEGER,
-                FOREIGN KEY (vocabulary_id) REFERENCES vocabularies (id)
-            )
-        ''')
 
         # 创建词性释义表
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS word_pos_meanings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                word_id INTEGER,
+                word TEXT NOT NULL,
                 pos TEXT NOT NULL,
                 meaning TEXT NOT NULL,
-                FOREIGN KEY (word_id) REFERENCES words (id)
+                vocabulary_id INTEGER,
+                FOREIGN KEY (vocabulary_id) REFERENCES vocabularies (id)
             )
         ''')
 
@@ -121,8 +111,9 @@ class DatabaseManager:
         self.cursor.execute('UPDATE words SET word = ?, meaning = ? WHERE word = ? AND vocabulary_id = ?',
                         (new_word, new_meaning, old_word, vocab_id))
         self.conn.commit()    
-    def delete_word(self, word):
-        self.cursor.execute('DELETE FROM words WHERE word = ?', (word,))
+    def delete_word(self, word: str, vocab_id: int):
+        self.cursor.execute('DELETE FROM word_pos_meanings WHERE word = ? AND vocabulary_id = ?', 
+                            (word, vocab_id))
         self.conn.commit()
     def update_vocab_list(self, vocab_list):
         vocab_list.clear()
@@ -139,9 +130,9 @@ class DatabaseManager:
     def update_words_list(self, words_list, vocab_id):
         words_list.clear()
         if vocab_id:
-            words = self.get_words(vocab_id)
-            for word, meaning in words:
-                words_list.addItem(f"{word}: {meaning}")
+            words = self.get_words_with_pos_meanings(vocab_id)
+            for word, meanings in words:
+                words_list.addItem(f"{word}: {meanings}")
     def record_study(self, vocab_id: int, word: str, is_correct: bool, study_mode: str):
         self.cursor.execute('INSERT INTO study_records (vocabulary_id, word, is_correct, study_mode) VALUES (?, ?, ?, ?)',
                             (vocab_id, word, is_correct, study_mode))
@@ -245,8 +236,10 @@ class DatabaseManager:
         return self.cursor.fetchall()
     def search_words(self, vocab_id: int, search_text: str):
         self.cursor.execute('''
-            SELECT word, meaning FROM words 
+            SELECT word, GROUP_CONCAT(pos || ': ' || meaning, '; ')
+            FROM word_pos_meanings 
             WHERE vocabulary_id = ? AND (LOWER(word) LIKE ? OR LOWER(meaning) LIKE ?)
+            GROUP BY word
         ''', (vocab_id, f'%{search_text}%', f'%{search_text}%'))
         return self.cursor.fetchall()
     def add_word_with_pos_meanings(self, word: str, pos_meanings: List[Tuple[str, str]], vocab_id: int) -> Tuple[bool, str]:
@@ -255,20 +248,15 @@ class DatabaseManager:
                 return False, "单词不能为空"
                 
             # 检查单词是否已存在
-            self.cursor.execute('SELECT id FROM words WHERE word = ? AND vocabulary_id = ?', 
+            self.cursor.execute('SELECT id FROM word_pos_meanings WHERE word = ? AND vocabulary_id = ?', 
                             (word.strip(), vocab_id))
             if self.cursor.fetchone():
                 return False, "该单词已存在于当前单词本中"
             
-            # 添加单词
-            self.cursor.execute('INSERT INTO words (word, vocabulary_id) VALUES (?, ?)',
-                            (word.strip(), vocab_id))
-            word_id = self.cursor.lastrowid
-            
             # 添加词性和释义
             for pos, meaning in pos_meanings:
-                self.cursor.execute('INSERT INTO word_pos_meanings (word_id, pos, meaning) VALUES (?, ?, ?)',
-                                (word_id, pos, meaning.strip()))
+                self.cursor.execute('INSERT INTO word_pos_meanings (word, pos, meaning, vocabulary_id) VALUES (?, ?, ?, ?)',
+                                (word.strip(), pos, meaning.strip(), vocab_id))
             
             self.conn.commit()
             return True, "单词添加成功"
@@ -278,10 +266,9 @@ class DatabaseManager:
 
     def get_words_with_pos_meanings(self, vocab_id):
         self.cursor.execute('''
-            SELECT w.word, GROUP_CONCAT(wpm.pos || ': ' || wpm.meaning, '; ')
-            FROM words w
-            LEFT JOIN word_pos_meanings wpm ON w.id = wpm.word_id
-            WHERE w.vocabulary_id = ?
-            GROUP BY w.id, w.word
+            SELECT word, GROUP_CONCAT(pos || ': ' || meaning, '; ')
+            FROM word_pos_meanings
+            WHERE vocabulary_id = ?
+            GROUP BY word
         ''', (vocab_id,))
         return self.cursor.fetchall()
