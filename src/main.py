@@ -2,7 +2,7 @@ import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QTextEdit, QMessageBox, QInputDialog,
-    QDialog, QStackedWidget, QFileDialog, QComboBox, QListWidget
+    QDialog, QStackedWidget, QFileDialog, QComboBox, QListWidget, QRadioButton
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -322,7 +322,7 @@ class MainWindow(QMainWindow):
         scroll_area.setWidget(pos_meaning_container)
         layout.addWidget(scroll_area)
         
-        # 添加单词本选择区域
+        # 添加单词本操作区域
         vocab_container = QWidget()
         vocab_layout = QVBoxLayout(vocab_container)
         vocab_layout.setSpacing(10)
@@ -340,14 +340,22 @@ class MainWindow(QMainWindow):
         vocab_layout.addWidget(QLabel('选择目标单词本：'))
         vocab_layout.addWidget(target_vocab_combo)
         
-        # 添加移动和复制按钮
+        # 添加操作选项
+        from PyQt6.QtWidgets import QButtonGroup
+        operation_group = QButtonGroup()
+        radio_copy = QRadioButton('复制到其他单词本')
+        radio_move = QRadioButton('移动到其他单词本')
+        radio_copy.setChecked(True)  # 默认选择复制
+        operation_group.addButton(radio_copy)
+        operation_group.addButton(radio_move)
+        vocab_layout.addWidget(radio_copy)
+        vocab_layout.addWidget(radio_move)
+        
+        # 添加操作按钮
         button_layout = QHBoxLayout()
-        btn_move = AnimatedButton('移动到其他单词本')
-        btn_copy = AnimatedButton('复制到其他单词本')
-        btn_move.setup_theme_style(self.theme_manager._themes[self.theme_manager.get_current_theme()])
-        btn_copy.setup_theme_style(self.theme_manager._themes[self.theme_manager.get_current_theme()])
-        button_layout.addWidget(btn_move)
-        button_layout.addWidget(btn_copy)
+        btn_execute = AnimatedButton('执行操作')
+        btn_execute.setup_theme_style(self.theme_manager._themes[self.theme_manager.get_current_theme()])
+        button_layout.addWidget(btn_execute)
         vocab_layout.addLayout(button_layout)
         
         layout.addWidget(vocab_container)
@@ -361,41 +369,28 @@ class MainWindow(QMainWindow):
         layout.addLayout(confirm_layout)
         
         # 连接按钮信号
-        def move_word():
+        def execute_operation():
             target_vocab_id = target_vocab_combo.currentData()
             if not target_vocab_id:
                 QMessageBox.warning(dialog, '提示', '请选择目标单词本！')
                 return
             
-            reply = QMessageBox.question(dialog, '确认', '确定要移动该单词吗？移动后将从当前单词本删除。')
-            if reply == QMessageBox.StandardButton.Yes:
-                # 添加到新单词本
-                success, message = self.db.add_word_with_pos_meanings(word, pos_meanings, target_vocab_id)
-                if success:
+            is_move = radio_move.isChecked()
+            # 添加到新单词本
+            success, message = self.db.add_word_with_pos_meanings(word, pos_meanings, target_vocab_id)
+            if success:
+                if is_move:
                     # 从当前单词本删除
                     self.db.delete_word(word, self.current_vocabulary)
                     self.db.update_words_list(self.words_list, self.current_vocabulary)
                     self.statusBar().showMessage('单词移动成功！', 2000)
-                    dialog.accept()
                 else:
-                    QMessageBox.warning(dialog, '错误', message)
-        
-        def copy_word():
-            target_vocab_id = target_vocab_combo.currentData()
-            if not target_vocab_id:
-                QMessageBox.warning(dialog, '提示', '请选择目标单词本！')
-                return
-            
-            # 复制到新单词本
-            success, message = self.db.add_word_with_pos_meanings(word, pos_meanings, target_vocab_id)
-            if success:
-                self.statusBar().showMessage('单词复制成功！', 2000)
+                    self.statusBar().showMessage('单词复制成功！', 2000)
                 dialog.accept()
             else:
                 QMessageBox.warning(dialog, '错误', message)
         
-        btn_move.clicked.connect(move_word)
-        btn_copy.clicked.connect(copy_word)
+        btn_execute.clicked.connect(execute_operation)
         ok_button.clicked.connect(dialog.accept)
         cancel_button.clicked.connect(dialog.reject)
         
