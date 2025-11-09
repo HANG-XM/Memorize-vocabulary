@@ -359,6 +359,8 @@ class MainWindow(QMainWindow):
             self.word_input.clear()
             self.meaning_input.clear()
             self.statusBar().showMessage(message, 2000)
+            # 添加成功后更新单词列表显示
+            self.db.update_words_list(self.words_list, vocab_id)
         else:
             self.statusBar().showMessage(message, 2000)
     def create_stats_page(self):
