@@ -351,12 +351,12 @@ class MainWindow(QMainWindow):
         if current_item:
             vocab_id = int(current_item.text().split('(ID: ')[1].rstrip(')'))
             reply = QMessageBox.question(self, '确认', '确定要删除这个单词本吗？这将删除其中的所有单词！',
-                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if reply == QMessageBox.StandardButton.Yes:
                 self.db.delete_vocabulary(vocab_id)
                 self.db.update_vocab_list(self.vocab_list)
                 self.db.update_vocab_combo(self.vocab_combo)
-                self.db.update_study_vocab_combo(self.study_vocab_combo)
+                self.db.update_vocab_combo(self.settings_vocab_combo)
                 
     def add_word(self):
         word = self.word_input.text().strip()

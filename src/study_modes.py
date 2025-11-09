@@ -278,7 +278,7 @@ class StudyModes:
             return
         
         # 继续下一个单词
-        words = main_window.db.get_words(vocab_id)
+        words = main_window.db.get_words_with_pos_meanings(vocab_id)
         main_window.current_word = random.choice(words)
         StudyModes.start_study(main_window)
 
@@ -351,7 +351,7 @@ class StudyModes:
         # 切换到学习页面
         main_window.switch_page(main_window.study_page)
         
-        words = main_window.db.get_words(vocab_id)
+        words = main_window.db.get_words_with_pos_meanings(vocab_id)
         if not words:
             QMessageBox.warning(main_window, '错误', '该单词本中没有单词！')
             return

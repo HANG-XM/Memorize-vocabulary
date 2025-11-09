@@ -69,7 +69,7 @@ class DatabaseManager:
             return False, f"创建失败：{str(e)}"
     
     def delete_vocabulary(self, vocab_id):
-        self.cursor.execute('DELETE FROM words WHERE vocabulary_id = ?', (vocab_id,))
+        self.cursor.execute('DELETE FROM word_pos_meanings WHERE vocabulary_id = ?', (vocab_id,))
         self.cursor.execute('DELETE FROM vocabularies WHERE id = ?', (vocab_id,))
         self.conn.commit()
     
@@ -78,39 +78,14 @@ class DatabaseManager:
         return self.cursor.fetchall()
     def export_vocabulary(self, vocab_id: int, file_path: str) -> Tuple[bool, str]:
         try:
-            words = self.get_words(vocab_id)
-            with open(file_path, 'w', newline='', encoding='utf-8-sig') as file:  # 使用utf-8-sig编码
+            words = self.get_words_with_pos_meanings(vocab_id)
+            with open(file_path, 'w', newline='', encoding='utf-8-sig') as file:
                 writer = csv.writer(file)
-                writer.writerow(['单词', '释义'])  # 写入标题行
+                writer.writerow(['单词', '释义'])
                 writer.writerows(words)
             return True, "导出成功"
         except Exception as e:
             return False, f"导出失败：{str(e)}"
-    def add_word(self, word: str, meaning: str, vocab_id: int) -> Tuple[bool, str]:
-        try:
-            if not word.strip() or not meaning.strip():
-                return False, "单词和释义不能为空"
-            
-            # 检查单词是否已存在
-            self.cursor.execute('SELECT id FROM words WHERE word = ? AND vocabulary_id = ?', 
-                            (word.strip(), vocab_id))
-            if self.cursor.fetchone():
-                return False, "该单词已存在于当前单词本中"
-                
-            self.cursor.execute('INSERT INTO words (word, meaning, vocabulary_id) VALUES (?, ?, ?)',
-                            (word.strip(), meaning.strip(), vocab_id))
-            self.conn.commit()
-            return True, "单词添加成功"
-        except sqlite3.Error as e:
-            return False, f"添加失败：{str(e)}"
-    
-    def get_words(self, vocab_id):
-        self.cursor.execute('SELECT word, meaning FROM words WHERE vocabulary_id = ?', (vocab_id,))
-        return self.cursor.fetchall()
-    def update_word(self, old_word, new_word, new_meaning, vocab_id):
-        self.cursor.execute('UPDATE words SET word = ?, meaning = ? WHERE word = ? AND vocabulary_id = ?',
-                        (new_word, new_meaning, old_word, vocab_id))
-        self.conn.commit()    
     def delete_word(self, word: str, vocab_id: int):
         self.cursor.execute('DELETE FROM word_pos_meanings WHERE word = ? AND vocabulary_id = ?', 
                             (word, vocab_id))
