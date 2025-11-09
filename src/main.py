@@ -310,7 +310,7 @@ class MainWindow(QMainWindow):
             if success:
                 self.db.update_vocab_list(self.vocab_list)
                 self.db.update_vocab_combo(self.vocab_combo)
-                self.db.update_study_vocab_combo(self.study_vocab_combo)
+                self.db.update_vocab_combo(self.settings_vocab_combo)
                 QMessageBox.information(self, '成功', message)
             else:
                 QMessageBox.warning(self, '错误', message)
