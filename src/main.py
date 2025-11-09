@@ -292,7 +292,20 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage('单词修改成功！', 2000)
             else:
                 self.statusBar().showMessage('请填写完整信息！', 2000)
-
+    def search_word(self):
+        search_text = self.search_input.text().strip().lower()
+        if not search_text:
+            self.db.update_words_list(self.words_list, self.current_vocabulary)
+            return
+            
+        if not self.current_vocabulary:
+            QMessageBox.warning(self, '提示', '请先选择单词本！')
+            return
+            
+        words = self.db.search_words(self.current_vocabulary, search_text)
+        self.words_list.clear()
+        for word, meaning in words:
+            self.words_list.addItem(f"{word}: {meaning}")
     def delete_word(self):
         current_item = self.words_list.currentItem()
         if current_item and self.current_vocabulary:

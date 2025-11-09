@@ -232,3 +232,9 @@ class DatabaseManager:
                 LIMIT 8
             ''')
         return self.cursor.fetchall()
+    def search_words(self, vocab_id: int, search_text: str):
+        self.cursor.execute('''
+            SELECT word, meaning FROM words 
+            WHERE vocabulary_id = ? AND (LOWER(word) LIKE ? OR LOWER(meaning) LIKE ?)
+        ''', (vocab_id, f'%{search_text}%', f'%{search_text}%'))
+        return self.cursor.fetchall()

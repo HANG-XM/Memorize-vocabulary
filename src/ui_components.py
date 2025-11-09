@@ -134,6 +134,17 @@ class UICreator:
         main_window.words_title.setFont(QFont('Arial', 16))
         right_layout.addWidget(main_window.words_title)
         
+        # 添加搜索框和按钮
+        search_layout = QHBoxLayout()
+        main_window.search_input = QLineEdit()
+        main_window.search_input.setPlaceholderText('搜索单词...')
+        btn_search = AnimatedButton('搜索')
+        btn_search.setup_theme_style(theme_colors)
+        btn_search.clicked.connect(main_window.search_word)
+        search_layout.addWidget(main_window.search_input)
+        search_layout.addWidget(btn_search)
+        right_layout.addLayout(search_layout)
+        
         main_window.words_list = QListWidget()
         right_layout.addWidget(main_window.words_list)
         
