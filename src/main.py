@@ -322,15 +322,80 @@ class MainWindow(QMainWindow):
         scroll_area.setWidget(pos_meaning_container)
         layout.addWidget(scroll_area)
         
-        # 添加按钮
+        # 添加单词本选择区域
+        vocab_container = QWidget()
+        vocab_layout = QVBoxLayout(vocab_container)
+        vocab_layout.setSpacing(10)
+        
+        vocab_title = QLabel('单词本操作：')
+        vocab_title.setFont(QFont('Arial', 12, QFont.Weight.Bold))
+        vocab_layout.addWidget(vocab_title)
+        
+        # 创建目标单词本选择下拉框
+        target_vocab_combo = QComboBox()
+        vocabularies = self.db.get_vocabularies()
+        for vocab_id, name in vocabularies:
+            if vocab_id != self.current_vocabulary:  # 排除当前单词本
+                target_vocab_combo.addItem(name, vocab_id)
+        vocab_layout.addWidget(QLabel('选择目标单词本：'))
+        vocab_layout.addWidget(target_vocab_combo)
+        
+        # 添加移动和复制按钮
         button_layout = QHBoxLayout()
+        btn_move = AnimatedButton('移动到其他单词本')
+        btn_copy = AnimatedButton('复制到其他单词本')
+        btn_move.setup_theme_style(self.theme_manager._themes[self.theme_manager.get_current_theme()])
+        btn_copy.setup_theme_style(self.theme_manager._themes[self.theme_manager.get_current_theme()])
+        button_layout.addWidget(btn_move)
+        button_layout.addWidget(btn_copy)
+        vocab_layout.addLayout(button_layout)
+        
+        layout.addWidget(vocab_container)
+        
+        # 添加确定和取消按钮
+        confirm_layout = QHBoxLayout()
         ok_button = AnimatedButton('确定')
         cancel_button = AnimatedButton('取消')
-        button_layout.addWidget(ok_button)
-        button_layout.addWidget(cancel_button)
-        layout.addLayout(button_layout)
+        confirm_layout.addWidget(ok_button)
+        confirm_layout.addWidget(cancel_button)
+        layout.addLayout(confirm_layout)
         
         # 连接按钮信号
+        def move_word():
+            target_vocab_id = target_vocab_combo.currentData()
+            if not target_vocab_id:
+                QMessageBox.warning(dialog, '提示', '请选择目标单词本！')
+                return
+            
+            reply = QMessageBox.question(dialog, '确认', '确定要移动该单词吗？移动后将从当前单词本删除。')
+            if reply == QMessageBox.StandardButton.Yes:
+                # 添加到新单词本
+                success, message = self.db.add_word_with_pos_meanings(word, pos_meanings, target_vocab_id)
+                if success:
+                    # 从当前单词本删除
+                    self.db.delete_word(word, self.current_vocabulary)
+                    self.db.update_words_list(self.words_list, self.current_vocabulary)
+                    self.statusBar().showMessage('单词移动成功！', 2000)
+                    dialog.accept()
+                else:
+                    QMessageBox.warning(dialog, '错误', message)
+        
+        def copy_word():
+            target_vocab_id = target_vocab_combo.currentData()
+            if not target_vocab_id:
+                QMessageBox.warning(dialog, '提示', '请选择目标单词本！')
+                return
+            
+            # 复制到新单词本
+            success, message = self.db.add_word_with_pos_meanings(word, pos_meanings, target_vocab_id)
+            if success:
+                self.statusBar().showMessage('单词复制成功！', 2000)
+                dialog.accept()
+            else:
+                QMessageBox.warning(dialog, '错误', message)
+        
+        btn_move.clicked.connect(move_word)
+        btn_copy.clicked.connect(copy_word)
         ok_button.clicked.connect(dialog.accept)
         cancel_button.clicked.connect(dialog.reject)
         
