@@ -87,9 +87,13 @@ class DatabaseManager:
         except Exception as e:
             return False, f"导出失败：{str(e)}"
     def delete_word(self, word: str, vocab_id: int):
-        self.cursor.execute('DELETE FROM word_pos_meanings WHERE word = ? AND vocabulary_id = ?', 
-                            (word, vocab_id))
-        self.conn.commit()
+        try:
+            self.cursor.execute('DELETE FROM word_pos_meanings WHERE word = ? AND vocabulary_id = ?', 
+                                (word, vocab_id))
+            self.conn.commit()
+        except Exception as e:
+            self.conn.rollback()
+            raise e
     def update_vocab_list(self, vocab_list):
         vocab_list.clear()
         vocabularies = self.get_vocabularies()

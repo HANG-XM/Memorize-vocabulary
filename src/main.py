@@ -441,12 +441,11 @@ class MainWindow(QMainWindow):
     def delete_word(self):
         current_item = self.words_list.currentItem()
         if current_item and self.current_vocabulary:
-            word = current_item.text().split(":")[0]
-            reply = QMessageBox.question(self, '确认', f'确定要删除单词"{word}"吗？',
-                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-            if reply == QMessageBox.StandardButton.Yes:
-                self.db.delete_word(word)
-                self.db.update_words_list(self.words_list, self.current_vocabulary)
+            # 从带序号的文本中提取原始单词
+            text = current_item.text().split(": ", 1)[0]
+            word = text.split(". ", 1)[1] if ". " in text else text
+            self.db.delete_word(word, self.current_vocabulary)
+            self.db.update_words_list(self.words_list, self.current_vocabulary)
                 
     def add_vocabulary(self):
         name, ok = QInputDialog.getText(self, '新建单词本', '请输入单词本名称：')
