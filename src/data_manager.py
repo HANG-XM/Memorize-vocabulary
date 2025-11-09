@@ -89,6 +89,13 @@ class DatabaseManager:
         try:
             if not word.strip() or not meaning.strip():
                 return False, "单词和释义不能为空"
+            
+            # 检查单词是否已存在
+            self.cursor.execute('SELECT id FROM words WHERE word = ? AND vocabulary_id = ?', 
+                            (word.strip(), vocab_id))
+            if self.cursor.fetchone():
+                return False, "该单词已存在于当前单词本中"
+                
             self.cursor.execute('INSERT INTO words (word, meaning, vocabulary_id) VALUES (?, ?, ?)',
                             (word.strip(), meaning.strip(), vocab_id))
             self.conn.commit()
