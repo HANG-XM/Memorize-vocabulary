@@ -27,6 +27,17 @@ class DatabaseManager:
             )
         ''')
 
+        # 创建词性释义表
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS word_pos_meanings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                word_id INTEGER,
+                pos TEXT NOT NULL,
+                meaning TEXT NOT NULL,
+                FOREIGN KEY (word_id) REFERENCES words (id)
+            )
+        ''')
+
         # 添加学习记录表
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS study_records (
@@ -237,4 +248,40 @@ class DatabaseManager:
             SELECT word, meaning FROM words 
             WHERE vocabulary_id = ? AND (LOWER(word) LIKE ? OR LOWER(meaning) LIKE ?)
         ''', (vocab_id, f'%{search_text}%', f'%{search_text}%'))
+        return self.cursor.fetchall()
+    def add_word_with_pos_meanings(self, word: str, pos_meanings: List[Tuple[str, str]], vocab_id: int) -> Tuple[bool, str]:
+        try:
+            if not word.strip():
+                return False, "单词不能为空"
+                
+            # 检查单词是否已存在
+            self.cursor.execute('SELECT id FROM words WHERE word = ? AND vocabulary_id = ?', 
+                            (word.strip(), vocab_id))
+            if self.cursor.fetchone():
+                return False, "该单词已存在于当前单词本中"
+            
+            # 添加单词
+            self.cursor.execute('INSERT INTO words (word, vocabulary_id) VALUES (?, ?)',
+                            (word.strip(), vocab_id))
+            word_id = self.cursor.lastrowid
+            
+            # 添加词性和释义
+            for pos, meaning in pos_meanings:
+                self.cursor.execute('INSERT INTO word_pos_meanings (word_id, pos, meaning) VALUES (?, ?, ?)',
+                                (word_id, pos, meaning.strip()))
+            
+            self.conn.commit()
+            return True, "单词添加成功"
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            return False, f"添加失败：{str(e)}"
+
+    def get_words_with_pos_meanings(self, vocab_id):
+        self.cursor.execute('''
+            SELECT w.word, GROUP_CONCAT(wpm.pos || ': ' || wpm.meaning, '; ')
+            FROM words w
+            LEFT JOIN word_pos_meanings wpm ON w.id = wpm.word_id
+            WHERE w.vocabulary_id = ?
+            GROUP BY w.id, w.word
+        ''', (vocab_id,))
         return self.cursor.fetchall()

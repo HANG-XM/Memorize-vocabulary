@@ -360,19 +360,40 @@ class MainWindow(QMainWindow):
                 
     def add_word(self):
         word = self.word_input.text().strip()
-        meaning = self.meaning_input.toPlainText().strip()
-        vocab_id = self.vocab_combo.currentData()
-        
-        if not word or not meaning:
-            QMessageBox.warning(self, '提示', '请填写完整的单词和释义！')
+        if not word:
+            QMessageBox.warning(self, '提示', '请输入单词！')
             return
         
-        success, message = self.db.add_word(word, meaning, vocab_id)
+        # 获取所有词性释义对
+        pos_meanings = []
+        for i in range(self.pos_meaning_layout.count()):
+            pair_widget = self.pos_meaning_layout.itemAt(i).widget()
+            if pair_widget:
+                pos_combo = pair_widget.findChild(QComboBox)
+                meaning_input = pair_widget.findChild(QTextEdit)
+                if pos_combo and meaning_input:
+                    pos = pos_combo.currentText()
+                    meaning = meaning_input.toPlainText().strip()
+                    if meaning:  # 只添加有释义的词性
+                        pos_meanings.append((pos, meaning))
+        
+        if not pos_meanings:
+            QMessageBox.warning(self, '提示', '请至少添加一个词性和释义！')
+            return
+        
+        vocab_id = self.vocab_combo.currentData()
+        success, message = self.db.add_word_with_pos_meanings(word, pos_meanings, vocab_id)
+        
         if success:
             self.word_input.clear()
-            self.meaning_input.clear()
+            # 清除所有词性释义对
+            while self.pos_meaning_layout.count():
+                item = self.pos_meaning_layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+            # 添加一个默认的空词性释义对
+            UICreator.add_pos_meaning_pair(self)
             self.statusBar().showMessage(message, 2000)
-            # 添加成功后更新单词列表显示
             self.db.update_words_list(self.words_list, vocab_id)
         else:
             self.statusBar().showMessage(message, 2000)

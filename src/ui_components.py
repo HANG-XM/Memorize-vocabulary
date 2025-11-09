@@ -189,16 +189,73 @@ class UICreator:
         layout.addWidget(QLabel('单词：'))
         layout.addWidget(main_window.word_input)
         
-        main_window.meaning_input = QTextEdit()
-        main_window.meaning_input.setPlaceholderText('输入释义')
-        main_window.meaning_input.setMaximumHeight(100)
-        layout.addWidget(QLabel('释义：'))
-        layout.addWidget(main_window.meaning_input)
+        # 创建词性释义输入区域
+        pos_meaning_container = QWidget()
+        pos_meaning_layout = QVBoxLayout(pos_meaning_container)
+        pos_meaning_layout.setSpacing(10)
+
+        pos_title = QLabel('词性与释义：')
+        pos_title.setFont(QFont('Arial', 12, QFont.Weight.Bold))
+        pos_meaning_layout.addWidget(pos_title)
+
+        # 创建添加词性按钮
+        add_pos_button = AnimatedButton('添加词性')
+        add_pos_button.setup_theme_style(theme_colors)
+        add_pos_button.clicked.connect(lambda: UICreator.add_pos_meaning_pair(main_window))
+        pos_meaning_layout.addWidget(add_pos_button)
+
+        # 创建滚动区域用于显示词性释义对
+        from PyQt6.QtWidgets import QScrollArea
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setMinimumHeight(200)
+        scroll_content = QWidget()
+        main_window.pos_meaning_layout = QVBoxLayout(scroll_content)
+        scroll_area.setWidget(scroll_content)
+        pos_meaning_layout.addWidget(scroll_area)
+
+        layout.addWidget(pos_meaning_container)
+        
+        # 添加一个默认的词性释义对
+        UICreator.add_pos_meaning_pair(main_window)
         
         btn_add = AnimatedButton('添加单词')
         btn_add.setup_theme_style(theme_colors)
         btn_add.clicked.connect(main_window.add_word)
         layout.addWidget(btn_add)
+
+    @staticmethod
+    def add_pos_meaning_pair(main_window):
+        # 创建词性选择和释义输入的容器
+        pair_widget = QWidget()
+        pair_layout = QHBoxLayout(pair_widget)
+        pair_layout.setSpacing(10)
+        
+        # 词性选择下拉框
+        pos_combo = QComboBox()
+        pos_combo.addItems(['n.', 'adj.', 'adv.', 'v.', 'prep.', 'conj.', 'pron.', 'art.', 'num.', 'interj.'])
+        pos_combo.setMinimumWidth(80)
+        pair_layout.addWidget(QLabel('词性：'))
+        pair_layout.addWidget(pos_combo)
+        
+        # 释义输入框
+        meaning_input = QTextEdit()
+        meaning_input.setPlaceholderText('输入该词性下的释义')
+        meaning_input.setMaximumHeight(60)
+        meaning_input.setMinimumWidth(200)
+        pair_layout.addWidget(QLabel('释义：'))
+        pair_layout.addWidget(meaning_input)
+        
+        # 删除按钮
+        delete_button = AnimatedButton('删除')
+        delete_button.setup_theme_style(main_window.theme_manager._themes[main_window.theme_manager.get_current_theme()])
+        delete_button.setMaximumWidth(60)
+        delete_button.clicked.connect(lambda: main_window.pos_meaning_layout.removeWidget(pair_widget))
+        pair_layout.addWidget(delete_button)
+        
+        # 添加到主布局
+        main_window.pos_meaning_layout.addWidget(pair_widget)
 
     @staticmethod
     def create_settings_page(main_window):
