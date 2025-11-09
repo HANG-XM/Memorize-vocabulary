@@ -216,7 +216,9 @@ class DatabaseManager:
             WHERE vocabulary_id = ? AND (LOWER(word) LIKE ? OR LOWER(meaning) LIKE ?)
             GROUP BY word
         ''', (vocab_id, f'%{search_text}%', f'%{search_text}%'))
-        return self.cursor.fetchall()
+        words = self.cursor.fetchall()
+        # 添加序号
+        return [(f"{i+1}. {word}", meanings) for i, (word, meanings) in enumerate(words)]
     def add_word_with_pos_meanings(self, word: str, pos_meanings: List[Tuple[str, str]], vocab_id: int) -> Tuple[bool, str]:
         try:
             if not word.strip():
@@ -246,4 +248,6 @@ class DatabaseManager:
             WHERE vocabulary_id = ?
             GROUP BY word
         ''', (vocab_id,))
-        return self.cursor.fetchall()
+        words = self.cursor.fetchall()
+        # 添加序号
+        return [(f"{i+1}. {word}", meanings) for i, (word, meanings) in enumerate(words)]
