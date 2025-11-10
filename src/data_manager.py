@@ -88,12 +88,20 @@ class DatabaseManager:
             return False, f"导出失败：{str(e)}"
     def delete_word(self, word: str, vocab_id: int):
         try:
+            # 先删除该单词的所有词性释义
             self.cursor.execute('DELETE FROM word_pos_meanings WHERE word = ? AND vocabulary_id = ?', 
-                                (word, vocab_id))
+                            (word, vocab_id))
+            # 同时删除学习记录
+            self.cursor.execute('DELETE FROM study_records WHERE word = ? AND vocabulary_id = ?', 
+                            (word, vocab_id))
+            # 同时删除错题记录
+            self.cursor.execute('DELETE FROM wrong_words WHERE word = ? AND vocabulary_id = ?', 
+                            (word, vocab_id))
             self.conn.commit()
+            return True, "单词删除成功"
         except Exception as e:
             self.conn.rollback()
-            raise e
+            return False, f"删除失败：{str(e)}"
     def update_vocab_list(self, vocab_list):
         vocab_list.clear()
         vocabularies = self.get_vocabularies()
@@ -262,3 +270,67 @@ class DatabaseManager:
             WHERE vocabulary_id = ? AND word = ?
         ''', (vocab_id, word))
         return self.cursor.fetchall()
+    def move_word(self, word: str, from_vocab_id: int, to_vocab_id: int) -> Tuple[bool, str]:
+        try:
+            # 开始事务 - 使用一致的方式
+            self.cursor.execute('BEGIN TRANSACTION')
+            
+            # 检查目标单词本是否已存在该单词
+            self.cursor.execute('SELECT id FROM word_pos_meanings WHERE word = ? AND vocabulary_id = ?', 
+                            (word, to_vocab_id))
+            if self.cursor.fetchone():
+                self.conn.rollback()  # 使用一致的rollback方式
+                return False, "目标单词本中已存在该单词"
+                
+            # 获取原单词的所有词性释义
+            self.cursor.execute('''
+                SELECT pos, meaning
+                FROM word_pos_meanings
+                WHERE vocabulary_id = ? AND word = ?
+            ''', (from_vocab_id, word))
+            pos_meanings = self.cursor.fetchall()
+            
+            if not pos_meanings:
+                self.conn.rollback()
+                return False, "在原单词本中未找到该单词"
+            
+            # 添加到新单词本
+            for pos, meaning in pos_meanings:
+                self.cursor.execute('''
+                    INSERT INTO word_pos_meanings (word, pos, meaning, vocabulary_id) 
+                    VALUES (?, ?, ?, ?)
+                ''', (word, pos, meaning, to_vocab_id))
+                
+                # 检查插入是否成功
+                if self.cursor.rowcount == 0:
+                    self.conn.rollback()
+                    return False, "添加到目标单词本失败"
+            
+            # 从原单词本删除 - 使用参数化查询确保准确性
+            self.cursor.execute('''
+                DELETE FROM word_pos_meanings 
+                WHERE word = ? AND vocabulary_id = ?
+            ''', (word, from_vocab_id))
+            
+            deleted_count = self.cursor.rowcount
+            
+            # 同时删除相关的学习记录和错题记录
+            self.cursor.execute('DELETE FROM study_records WHERE word = ? AND vocabulary_id = ?', 
+                            (word, from_vocab_id))
+            self.cursor.execute('DELETE FROM wrong_words WHERE word = ? AND vocabulary_id = ?', 
+                            (word, from_vocab_id))
+            
+            # 提交事务
+            self.conn.commit()
+            
+            if deleted_count > 0:
+                return True, "单词移动成功"
+            else:
+                return False, "从原单词本删除失败"
+                
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            return False, f"移动失败：{str(e)}"
+        except Exception as e:
+            self.conn.rollback()
+            return False, f"移动过程中发生错误：{str(e)}"

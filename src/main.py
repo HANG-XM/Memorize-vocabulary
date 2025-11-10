@@ -376,26 +376,42 @@ class MainWindow(QMainWindow):
                 return
             
             is_move = radio_move.isChecked()
-            # 添加到新单词本
-            success, message = self.db.add_word_with_pos_meanings(word, pos_meanings, target_vocab_id)
-            if success:
-                if is_move:
-                    # 从当前单词本删除
-                    self.db.delete_word(word, self.current_vocabulary)
+            if is_move:
+                # 使用移动方法
+                success, message = self.db.move_word(word, self.current_vocabulary, target_vocab_id)
+                if success:
+                    # 更新原单词本列表
                     self.db.update_words_list(self.words_list, self.current_vocabulary)
-                    self.statusBar().showMessage('单词移动成功！', 2000)
+                    # 如果当前显示的是目标单词本，也需要更新
+                    if self.current_vocabulary == target_vocab_id:
+                        self.db.update_words_list(self.words_list, target_vocab_id)
+                    self.statusBar().showMessage(message, 2000)
+                    dialog.accept()
                 else:
-                    self.statusBar().showMessage('单词复制成功！', 2000)
-                dialog.accept()
+                    QMessageBox.warning(dialog, '错误', message)
             else:
-                QMessageBox.warning(dialog, '错误', message)
+                # 复制逻辑
+                current_pos_meanings = self.db.get_word_pos_meanings(word, self.current_vocabulary)
+                success, message = self.db.add_word_with_pos_meanings(word, current_pos_meanings, target_vocab_id)
+                if success:
+                    self.statusBar().showMessage('单词复制成功！', 2000)
+                    dialog.accept()
+                else:
+                    QMessageBox.warning(dialog, '错误', message)
         
         btn_execute.clicked.connect(execute_operation)
-        ok_button.clicked.connect(dialog.accept)
-        cancel_button.clicked.connect(dialog.reject)
         
-        # 显示对话框
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        # 修改确定按钮的逻辑
+        def handle_ok():
+            # 检查是否执行了移动或复制操作
+            operation_performed = False
+            
+            # 如果执行了移动或复制操作，直接关闭对话框
+            if hasattr(dialog, '_operation_performed') and dialog._operation_performed:
+                dialog.accept()
+                return
+            
+            # 否则执行修改单词的逻辑
             new_word = word_input.text().strip()
             
             # 获取所有词性释义对
@@ -420,10 +436,27 @@ class MainWindow(QMainWindow):
                 if success:
                     self.db.update_words_list(self.words_list, self.current_vocabulary)
                     self.statusBar().showMessage('单词修改成功！', 2000)
+                    dialog.accept()
                 else:
                     self.statusBar().showMessage(message, 2000)
             else:
                 self.statusBar().showMessage('请填写完整信息！', 2000)
+        
+        ok_button.clicked.connect(handle_ok)
+        cancel_button.clicked.connect(dialog.reject)
+        
+        # 修改执行操作函数，标记操作已执行
+        original_execute_operation = execute_operation
+        def new_execute_operation():
+            dialog._operation_performed = True
+            original_execute_operation()
+        
+        btn_execute.clicked.disconnect()
+        btn_execute.clicked.connect(new_execute_operation)
+        
+        # 显示对话框
+        dialog._operation_performed = False
+        dialog.exec()
     def search_word(self):
         search_text = self.search_input.text().strip().lower()
         if not search_text:
