@@ -107,10 +107,10 @@ class StudyModes:
         
         # 检查是否完成所有单词
         if StudyModes.current_word_index >= StudyModes.total_words:
-            QMessageBox.information(main_window, '完成', 
-                f'学习完成！\n总单词数：{StudyModes.total_words}\n'
-                f'正确单词数：{StudyModes.correct_count}\n'
-                f'正确率：{StudyModes.correct_count * 100 / StudyModes.total_words:.1f}%')
+            main_window.statusBar().showMessage(
+                f'学习完成！总单词数：{StudyModes.total_words}，正确单词数：{StudyModes.correct_count}，正确率：{StudyModes.correct_count * 100 / StudyModes.total_words:.1f}%', 
+                5000
+            )
             main_window.switch_page(main_window.main_page)
             return
         
@@ -285,10 +285,10 @@ class StudyModes:
         
         # 检查是否完成所有单词
         if StudyModes.current_word_index >= StudyModes.total_words:
-            QMessageBox.information(main_window, '完成', 
-                f'学习完成！\n总单词数：{StudyModes.total_words}\n'
-                f'认识单词数：{StudyModes.correct_count}\n'
-                f'正确率：{StudyModes.correct_count * 100 / StudyModes.total_words:.1f}%')
+            main_window.statusBar().showMessage(
+                f'学习完成！总单词数：{StudyModes.total_words}，认识单词数：{StudyModes.correct_count}，正确率：{StudyModes.correct_count * 100 / StudyModes.total_words:.1f}%', 
+                5000
+            )
             main_window.switch_page(main_window.main_page)
             return
         
@@ -304,9 +304,9 @@ class StudyModes:
     @staticmethod
     def check_answer(main_window, is_correct, words):
         if is_correct:
-            QMessageBox.information(main_window, '正确', '回答正确！')
+            main_window.statusBar().showMessage('回答正确！', 2000)
         else:
-            QMessageBox.warning(main_window, '错误', '回答错误！')
+            main_window.statusBar().showMessage('回答错误！', 2000)
         StudyModes.next_word(main_window)
 
     @staticmethod
@@ -345,10 +345,10 @@ class StudyModes:
         
         # 检查是否完成所有单词
         if StudyModes.current_word_index >= StudyModes.total_words:
-            QMessageBox.information(main_window, '完成', 
-                f'学习完成！\n总单词数：{StudyModes.total_words}\n'
-                f'正确单词数：{StudyModes.correct_count}\n'
-                f'正确率：{StudyModes.correct_count * 100 / StudyModes.total_words:.1f}%')
+            main_window.statusBar().showMessage(
+                f'学习完成！总单词数：{StudyModes.total_words}，正确单词数：{StudyModes.correct_count}，正确率：{StudyModes.correct_count * 100 / StudyModes.total_words:.1f}%', 
+                5000
+            )
             main_window.switch_page(main_window.main_page)
             return
         
