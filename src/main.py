@@ -173,8 +173,8 @@ class MainWindow(QMainWindow):
         reply = QMessageBox.question(self, '确认', '确定要清空所有错题吗？',
                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
-            self.db.execute('DELETE FROM wrong_words')
-            self.db.commit()
+            self.db.cursor.execute('DELETE FROM wrong_words')
+            self.db.conn.commit()
             self.update_wrong_words()
             self.statusBar().showMessage('错题本已清空', 2000)
         
