@@ -138,6 +138,7 @@ class StudyModes:
             main_window.theme_manager.set_theme(Theme.BLUE)
         elif main_window.theme_radio_green.isChecked():
             main_window.theme_manager.set_theme(Theme.GREEN)
+        
         # 保存选中的单词本
         vocab_id = main_window.settings_vocab_combo.currentData()
         if not vocab_id:
@@ -152,9 +153,23 @@ class StudyModes:
         elif main_window.settings_radio_spell.isChecked():
             main_window.study_mode = 'spell'
         
+        # 保存学习类型 - 支持多选
+        study_types = []
+        if main_window.settings_checkbox_word.isChecked():
+            study_types.append('word')
+        if main_window.settings_checkbox_phrase.isChecked():
+            study_types.append('phrase')
+        
+        # 如果没有选择任何类型，默认选择单词
+        if not study_types:
+            study_types = ['word']
+            main_window.settings_checkbox_word.setChecked(True)
+        
+        main_window.study_type = study_types
+        
         main_window.current_vocab_id = vocab_id
         QMessageBox.information(main_window, '成功', '设置已保存！')
-        main_window.switch_page(main_window.main_page)       
+        main_window.switch_page(main_window.main_page)
 
     @staticmethod
     def create_choice_mode(study_layout, words, main_window=None):
@@ -339,7 +354,6 @@ class StudyModes:
         
         StudyModes.next_word(main_window)
 
-    @staticmethod
     def start_study(main_window):
         # 使用保存的设置而不是从界面获取
         vocab_id = getattr(main_window, 'current_vocab_id', None)
@@ -351,9 +365,18 @@ class StudyModes:
         # 切换到学习页面
         main_window.switch_page(main_window.study_page)
         
-        words = main_window.db.get_words_with_pos_meanings(vocab_id)
+        # 根据学习类型获取单词
+        study_type = getattr(main_window, 'study_type', ['word'])  # 默认为包含'word'的列表
+        words = main_window.db.get_words_with_pos_meanings(vocab_id, study_type)
         if not words:
-            QMessageBox.warning(main_window, '错误', '该单词本中没有单词！')
+            types = []
+            if isinstance(study_type, list):
+                types = ['单词' if t == 'word' else '短语' for t in study_type]
+            else:
+                types = ['单词' if study_type == 'word' else '短语']
+            
+            type_str = '或'.join(types)
+            QMessageBox.warning(main_window, '错误', f'该单词本中没有{type_str}！')
             return
         
         # 初始化进度跟踪

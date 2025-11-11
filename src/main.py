@@ -20,6 +20,7 @@ class MainWindow(QMainWindow):
         self.current_vocabulary = None
         self.current_vocab_id = None
         self.study_mode = 'recognize'
+        self.study_type = 'word'
         self.statusBar().showMessage('就绪')
         
         # 添加统计页面和错题本页面
@@ -253,6 +254,16 @@ class MainWindow(QMainWindow):
         # 获取该单词的所有词性和释义
         pos_meanings = self.db.get_word_pos_meanings(word, self.current_vocabulary)
         
+        # 获取单词类型
+        word_type = 'word'  # 默认类型
+        if pos_meanings:
+            # 从数据库中获取单词类型
+            self.db.cursor.execute('SELECT DISTINCT type FROM word_pos_meanings WHERE word = ? AND vocabulary_id = ?', 
+                                (word, self.current_vocabulary))
+            result = self.db.cursor.fetchone()
+            if result:
+                word_type = result[0]
+        
         dialog = QDialog(self)
         dialog.setWindowTitle('修改单词')
         dialog.setMinimumWidth(500)
@@ -265,6 +276,16 @@ class MainWindow(QMainWindow):
         layout.addWidget(word_label)
         layout.addWidget(word_input)
         
+        # 添加类型选择
+        type_label = QLabel('类型：')
+        type_combo = QComboBox()
+        type_combo.addItems(['单词', '短语'])
+        type_combo.setCurrentText('单词' if word_type == 'word' else '短语')
+        type_layout = QHBoxLayout()
+        type_layout.addWidget(type_label)
+        type_layout.addWidget(type_combo)
+        layout.addLayout(type_layout)
+        
         # 创建词性释义输入区域
         pos_meaning_container = QWidget()
         pos_meaning_layout = QVBoxLayout(pos_meaning_container)
@@ -275,7 +296,6 @@ class MainWindow(QMainWindow):
         pos_meaning_layout.addWidget(pos_title)
         
         # 为每个词性释义创建输入框
-        from ui_components import UICreator
         for pos, meaning in pos_meanings:
             pair_widget = QWidget()
             pair_layout = QHBoxLayout(pair_widget)
@@ -322,44 +342,6 @@ class MainWindow(QMainWindow):
         scroll_area.setWidget(pos_meaning_container)
         layout.addWidget(scroll_area)
         
-        # 添加单词本操作区域
-        vocab_container = QWidget()
-        vocab_layout = QVBoxLayout(vocab_container)
-        vocab_layout.setSpacing(10)
-        
-        vocab_title = QLabel('单词本操作：')
-        vocab_title.setFont(QFont('Arial', 12, QFont.Weight.Bold))
-        vocab_layout.addWidget(vocab_title)
-        
-        # 创建目标单词本选择下拉框
-        target_vocab_combo = QComboBox()
-        vocabularies = self.db.get_vocabularies()
-        for vocab_id, name in vocabularies:
-            if vocab_id != self.current_vocabulary:  # 排除当前单词本
-                target_vocab_combo.addItem(name, vocab_id)
-        vocab_layout.addWidget(QLabel('选择目标单词本：'))
-        vocab_layout.addWidget(target_vocab_combo)
-        
-        # 添加操作选项
-        from PyQt6.QtWidgets import QButtonGroup
-        operation_group = QButtonGroup()
-        radio_copy = QRadioButton('复制到其他单词本')
-        radio_move = QRadioButton('移动到其他单词本')
-        radio_copy.setChecked(True)  # 默认选择复制
-        operation_group.addButton(radio_copy)
-        operation_group.addButton(radio_move)
-        vocab_layout.addWidget(radio_copy)
-        vocab_layout.addWidget(radio_move)
-        
-        # 添加操作按钮
-        button_layout = QHBoxLayout()
-        btn_execute = AnimatedButton('执行操作')
-        btn_execute.setup_theme_style(self.theme_manager._themes[self.theme_manager.get_current_theme()])
-        button_layout.addWidget(btn_execute)
-        vocab_layout.addLayout(button_layout)
-        
-        layout.addWidget(vocab_container)
-        
         # 添加确定和取消按钮
         confirm_layout = QHBoxLayout()
         ok_button = AnimatedButton('确定')
@@ -369,50 +351,11 @@ class MainWindow(QMainWindow):
         layout.addLayout(confirm_layout)
         
         # 连接按钮信号
-        def execute_operation():
-            target_vocab_id = target_vocab_combo.currentData()
-            if not target_vocab_id:
-                QMessageBox.warning(dialog, '提示', '请选择目标单词本！')
-                return
-            
-            is_move = radio_move.isChecked()
-            if is_move:
-                # 使用移动方法
-                success, message = self.db.move_word(word, self.current_vocabulary, target_vocab_id)
-                if success:
-                    # 更新原单词本列表
-                    self.db.update_words_list(self.words_list, self.current_vocabulary)
-                    # 如果当前显示的是目标单词本，也需要更新
-                    if self.current_vocabulary == target_vocab_id:
-                        self.db.update_words_list(self.words_list, target_vocab_id)
-                    self.statusBar().showMessage(message, 2000)
-                    dialog.accept()
-                else:
-                    QMessageBox.warning(dialog, '错误', message)
-            else:
-                # 复制逻辑
-                current_pos_meanings = self.db.get_word_pos_meanings(word, self.current_vocabulary)
-                success, message = self.db.add_word_with_pos_meanings(word, current_pos_meanings, target_vocab_id)
-                if success:
-                    self.statusBar().showMessage('单词复制成功！', 2000)
-                    dialog.accept()
-                else:
-                    QMessageBox.warning(dialog, '错误', message)
-        
-        btn_execute.clicked.connect(execute_operation)
-        
-        # 修改确定按钮的逻辑
         def handle_ok():
-            # 检查是否执行了移动或复制操作
-            operation_performed = False
-            
-            # 如果执行了移动或复制操作，直接关闭对话框
-            if hasattr(dialog, '_operation_performed') and dialog._operation_performed:
-                dialog.accept()
-                return
-            
-            # 否则执行修改单词的逻辑
             new_word = word_input.text().strip()
+            
+            # 获取单词类型
+            word_type = 'word' if type_combo.currentText() == '单词' else 'phrase'
             
             # 获取所有词性释义对
             new_pos_meanings = []
@@ -430,8 +373,8 @@ class MainWindow(QMainWindow):
             if new_word and new_pos_meanings:
                 # 先删除原有的词性释义
                 self.db.delete_word(word, self.current_vocabulary)
-                # 添加新的词性释义
-                success, message = self.db.add_word_with_pos_meanings(new_word, new_pos_meanings, self.current_vocabulary)
+                # 添加新的词性释义（包含类型信息）
+                success, message = self.db.add_word_with_pos_meanings_and_type(new_word, new_pos_meanings, word_type, self.current_vocabulary)
                 
                 if success:
                     self.db.update_words_list(self.words_list, self.current_vocabulary)
@@ -445,17 +388,7 @@ class MainWindow(QMainWindow):
         ok_button.clicked.connect(handle_ok)
         cancel_button.clicked.connect(dialog.reject)
         
-        # 修改执行操作函数，标记操作已执行
-        original_execute_operation = execute_operation
-        def new_execute_operation():
-            dialog._operation_performed = True
-            original_execute_operation()
-        
-        btn_execute.clicked.disconnect()
-        btn_execute.clicked.connect(new_execute_operation)
-        
         # 显示对话框
-        dialog._operation_performed = False
         dialog.exec()
     def search_word(self):
         search_text = self.search_input.text().strip().lower()
@@ -528,6 +461,9 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, '提示', '请输入单词！')
             return
         
+        # 获取单词类型
+        word_type = 'word' if self.word_type_combo.currentText() == '单词' else 'phrase'
+        
         # 获取所有词性释义对
         pos_meanings = []
         for i in range(self.pos_meaning_layout.count()):
@@ -546,7 +482,7 @@ class MainWindow(QMainWindow):
             return
         
         vocab_id = self.vocab_combo.currentData()
-        success, message = self.db.add_word_with_pos_meanings(word, pos_meanings, vocab_id)
+        success, message = self.db.add_word_with_pos_meanings_and_type(word, pos_meanings, word_type, vocab_id)
         
         if success:
             self.word_input.clear()

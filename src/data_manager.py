@@ -23,6 +23,7 @@ class DatabaseManager:
                 word TEXT NOT NULL,
                 pos TEXT NOT NULL,
                 meaning TEXT NOT NULL,
+                type TEXT NOT NULL DEFAULT 'word',  -- 添加类型字段，默认为单词
                 vocabulary_id INTEGER,
                 FOREIGN KEY (vocabulary_id) REFERENCES vocabularies (id)
             )
@@ -242,10 +243,32 @@ class DatabaseManager:
             if self.cursor.fetchone():
                 return False, "该单词已存在于当前单词本中"
             
-            # 添加词性和释义
+            # 添加词性和释义（使用默认类型'word'）
             for pos, meaning in pos_meanings:
-                self.cursor.execute('INSERT INTO word_pos_meanings (word, pos, meaning, vocabulary_id) VALUES (?, ?, ?, ?)',
-                                (word.strip(), pos, meaning.strip(), vocab_id))
+                self.cursor.execute('INSERT INTO word_pos_meanings (word, pos, meaning, vocabulary_id, type) VALUES (?, ?, ?, ?, ?)',
+                                (word.strip(), pos, meaning.strip(), vocab_id, 'word'))
+            
+            self.conn.commit()
+            return True, "单词添加成功"
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            return False, f"添加失败：{str(e)}"
+    
+    def add_word_with_pos_meanings_and_type(self, word: str, pos_meanings: List[Tuple[str, str]], word_type: str, vocab_id: int) -> Tuple[bool, str]:
+        try:
+            if not word.strip():
+                return False, "单词不能为空"
+                
+            # 检查单词是否已存在
+            self.cursor.execute('SELECT id FROM word_pos_meanings WHERE word = ? AND vocabulary_id = ?', 
+                            (word.strip(), vocab_id))
+            if self.cursor.fetchone():
+                return False, "该单词已存在于当前单词本中"
+            
+            # 添加词性和释义（使用传入的类型）
+            for pos, meaning in pos_meanings:
+                self.cursor.execute('INSERT INTO word_pos_meanings (word, pos, meaning, vocabulary_id, type) VALUES (?, ?, ?, ?, ?)',
+                                (word.strip(), pos, meaning.strip(), vocab_id, word_type))
             
             self.conn.commit()
             return True, "单词添加成功"
@@ -253,15 +276,33 @@ class DatabaseManager:
             self.conn.rollback()
             return False, f"添加失败：{str(e)}"
 
-    def get_words_with_pos_meanings(self, vocab_id):
-        self.cursor.execute('''
-            SELECT word, GROUP_CONCAT(pos || ': ' || meaning, '; ')
-            FROM word_pos_meanings
-            WHERE vocabulary_id = ?
-            GROUP BY word
-        ''', (vocab_id,))
+    def get_words_with_pos_meanings(self, vocab_id, word_type=None):
+        if word_type:
+            if isinstance(word_type, list):
+                # 处理多个类型的情况
+                placeholders = ','.join(['?' for _ in word_type])
+                self.cursor.execute(f'''
+                    SELECT word, GROUP_CONCAT(pos || ': ' || meaning, '; ')
+                    FROM word_pos_meanings
+                    WHERE vocabulary_id = ? AND type IN ({placeholders})
+                    GROUP BY word
+                ''', [vocab_id] + word_type)
+            else:
+                # 处理单个类型的情况
+                self.cursor.execute('''
+                    SELECT word, GROUP_CONCAT(pos || ': ' || meaning, '; ')
+                    FROM word_pos_meanings
+                    WHERE vocabulary_id = ? AND type = ?
+                    GROUP BY word
+                ''', (vocab_id, word_type))
+        else:
+            self.cursor.execute('''
+                SELECT word, GROUP_CONCAT(pos || ': ' || meaning, '; ')
+                FROM word_pos_meanings
+                WHERE vocabulary_id = ?
+                GROUP BY word
+            ''', (vocab_id,))
         words = self.cursor.fetchall()
-        # 添加序号
         return [(f"{i+1}. {word}", meanings) for i, (word, meanings) in enumerate(words)]
     def get_word_pos_meanings(self, word: str, vocab_id: int):
         self.cursor.execute('''

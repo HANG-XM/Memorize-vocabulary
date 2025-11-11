@@ -188,6 +188,15 @@ class UICreator:
         main_window.word_input.setPlaceholderText('输入单词')
         layout.addWidget(QLabel('单词：'))
         layout.addWidget(main_window.word_input)
+
+        # 在单词输入框后添加类型选择
+        main_window.word_type_combo = QComboBox()
+        main_window.word_type_combo.addItems(['单词', '短语'])
+        main_window.word_type_combo.setMinimumWidth(100)
+        word_type_layout = QHBoxLayout()
+        word_type_layout.addWidget(QLabel('类型：'))
+        word_type_layout.addWidget(main_window.word_type_combo)
+        layout.addLayout(word_type_layout)
         
         # 创建词性释义输入区域
         pos_meaning_container = QWidget()
@@ -342,6 +351,16 @@ class UICreator:
         vocab_layout.addWidget(main_window.settings_radio_recognize)
         vocab_layout.addWidget(main_window.settings_radio_choice)
         vocab_layout.addWidget(main_window.settings_radio_spell)
+        
+        # 学习类型选择 - 使用真正的多选框
+        from PyQt6.QtWidgets import QCheckBox
+        vocab_layout.addWidget(QLabel('学习类型：'))
+        main_window.settings_checkbox_word = QCheckBox('学习单词')
+        main_window.settings_checkbox_phrase = QCheckBox('学习短语')
+        main_window.settings_checkbox_word.setChecked(True)
+        
+        vocab_layout.addWidget(main_window.settings_checkbox_word)
+        vocab_layout.addWidget(main_window.settings_checkbox_phrase)
         
         layout.addWidget(vocab_container)
         
