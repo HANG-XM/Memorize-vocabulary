@@ -3,8 +3,8 @@ from PyQt6.QtWidgets import (
     QLineEdit, QTextEdit, QListWidget, QComboBox, QRadioButton,
     QButtonGroup, QStackedWidget, QFrame, QInputDialog, QDialog
 )
-from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, pyqtProperty, QRect, Qt
-from PyQt6.QtGui import QColor, QCursor, QFont
+from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, pyqtProperty, QRect, Qt, QParallelAnimationGroup, QSequentialAnimationGroup
+from PyQt6.QtGui import QColor, QCursor, QFont, QPainter, QLinearGradient
 from study_modes import StudyModes
 from theme_manager import Theme
 
@@ -62,43 +62,175 @@ class AnimatedButton(QPushButton):
             self.animation.start()
         super().leaveEvent(event)
 
+class AnimatedLabel(QLabel):
+    def __init__(self, text: str = ""):
+        super().__init__(text)
+        self._opacity = 1.0
+        self.opacity_animation = QPropertyAnimation(self, b"opacity")
+        self.opacity_animation.setDuration(300)
+        self.opacity_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        
+        self._scale = 1.0
+        self.scale_animation = QPropertyAnimation(self, b"scale")
+        self.scale_animation.setDuration(200)
+        self.scale_animation.setEasingCurve(QEasingCurve.Type.OutBack)
+
+    @pyqtProperty(float)
+    def opacity(self):
+        return self._opacity
+    
+    @opacity.setter
+    def opacity(self, value):
+        self._opacity = value
+        self.setStyleSheet(f"color: rgba(0, 0, 0, {value});")
+    
+    @pyqtProperty(float)
+    def scale(self):
+        return self._scale
+    
+    @scale.setter
+    def scale(self, value):
+        self._scale = value
+        self.setStyleSheet(f"font-size: {int(14 * value)}px;")
+    
+    def fade_in(self):
+        self.opacity_animation.setStartValue(0.0)
+        self.opacity_animation.setEndValue(1.0)
+        self.opacity_animation.start()
+    
+    def fade_out(self):
+        self.opacity_animation.setStartValue(1.0)
+        self.opacity_animation.setEndValue(0.0)
+        self.opacity_animation.start()
+    
+    def pulse(self):
+        self.scale_animation.setStartValue(1.0)
+        self.scale_animation.setEndValue(1.1)
+        self.scale_animation.setLoopCount(2)
+        self.scale_animation.setDirection(QPropertyAnimation.Direction.Forward)
+        self.scale_animation.start()
+
+class AnimatedCard(QFrame):
+    def __init__(self):
+        super().__init__()
+        self.setFrameStyle(QFrame.Shape.StyledPanel)
+        self.setLineWidth(2)
+        
+        self._elevation = 0
+        self.elevation_animation = QPropertyAnimation(self, b"elevation")
+        self.elevation_animation.setDuration(150)
+        self.elevation_animation.setEasingCurve(QEasingCurve.Type.OutQuad)
+
+    @pyqtProperty(int)
+    def elevation(self):
+        return self._elevation
+    
+    @elevation.setter
+    def elevation(self, value):
+        self._elevation = value
+        # Qt样式表不支持box-shadow，使用边框和背景色模拟阴影效果
+        border_color = "#e0e0e0"
+        if value > 0:
+            # 根据高度值调整边框颜色来模拟阴影
+            shadow_intensity = min(255, 100 + value * 15)
+            border_color = f"rgba(0,0,0,{shadow_intensity/255:.2f})"
+        
+        self.setStyleSheet(f"""
+            QFrame {{
+                background-color: white;
+                border-radius: 8px;
+                border: 2px solid {border_color};
+                margin: {value}px;
+            }}
+        """)
+    
+    def enterEvent(self, event):
+        self.elevation_animation.setStartValue(0)
+        self.elevation_animation.setEndValue(4)
+        self.elevation_animation.start()
+        super().enterEvent(event)
+    
+    def leaveEvent(self, event):
+        self.elevation_animation.setStartValue(4)
+        self.elevation_animation.setEndValue(0)
+        self.elevation_animation.start()
+        super().leaveEvent(event)
+
 class UICreator:
     @staticmethod
     def create_main_page(main_window):
         layout = QVBoxLayout(main_window.main_page)
         layout.setSpacing(20)
+        layout.setContentsMargins(20, 20, 20, 20)
         
-        title = QLabel('智能背单词')
+        # 使用动画标题
+        title = AnimatedLabel('智能背单词')
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setFont(QFont('Arial', 24))
+        title.setFont(QFont('Arial', 24, QFont.Weight.Bold))
         layout.addWidget(title)
+        
+        # 创建卡片容器
+        card_container = QWidget()
+        card_layout = QVBoxLayout(card_container)
+        card_layout.setSpacing(15)
         
         # 创建按钮并设置主题样式
         theme_colors = main_window.theme_manager._themes[main_window.theme_manager.get_current_theme()]
         
+        # 创建卡片式按钮
+        btn_vocab_card = AnimatedCard()
+        btn_vocab_layout = QVBoxLayout(btn_vocab_card)
         btn_vocab = AnimatedButton('单词本管理')
         btn_vocab.setup_theme_style(theme_colors)
         btn_vocab.clicked.connect(lambda: main_window.switch_page(main_window.vocabulary_page))
+        btn_vocab_layout.addWidget(btn_vocab)
         
+        btn_stats_card = AnimatedCard()
+        btn_stats_layout = QVBoxLayout(btn_stats_card)
         btn_stats = AnimatedButton('学习统计')
         btn_stats.setup_theme_style(theme_colors)
         btn_stats.clicked.connect(lambda: main_window.switch_page(main_window.stats_page))
+        btn_stats_layout.addWidget(btn_stats)
         
+        btn_wrong_words_card = AnimatedCard()
+        btn_wrong_words_layout = QVBoxLayout(btn_wrong_words_card)
         btn_wrong_words = AnimatedButton('错题本')
         btn_wrong_words.setup_theme_style(theme_colors)
         btn_wrong_words.clicked.connect(lambda: main_window.switch_page(main_window.wrong_words_page))
+        btn_wrong_words_layout.addWidget(btn_wrong_words)
         
+        btn_settings_card = AnimatedCard()
+        btn_settings_layout = QVBoxLayout(btn_settings_card)
         btn_settings = AnimatedButton('学习设置')
         btn_settings.setup_theme_style(theme_colors)
         btn_settings.clicked.connect(lambda: main_window.switch_page(main_window.settings_page))
+        btn_settings_layout.addWidget(btn_settings)
         
+        btn_study_card = AnimatedCard()
+        btn_study_layout = QVBoxLayout(btn_study_card)
         btn_study = AnimatedButton('开始学习')
         btn_study.setup_theme_style(theme_colors)
         btn_study.clicked.connect(lambda: StudyModes.start_study(main_window))
-
-        for btn in [btn_vocab, btn_stats, btn_wrong_words, btn_settings, btn_study]:
-            btn.setMinimumHeight(50)
-            layout.addWidget(btn)
+        btn_study_layout.addWidget(btn_study)
+        
+        # 添加卡片到卡片容器布局
+        card_layout.addWidget(btn_vocab_card)
+        card_layout.addWidget(btn_stats_card)
+        card_layout.addWidget(btn_wrong_words_card)
+        card_layout.addWidget(btn_settings_card)
+        card_layout.addWidget(btn_study_card)
+        
+        # 添加卡片容器到主布局
+        layout.addWidget(card_container)
+        
+        # 添加页面切换动画
+        def animate_page_switch():
+            title.fade_in()
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(100, lambda: title.pulse())
+        
+        # 连接页面切换信号
+        main_window.stack.currentChanged.connect(animate_page_switch)
 
     @staticmethod
     def create_vocabulary_page(main_window):
