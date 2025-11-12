@@ -3,7 +3,6 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 import random
 from typing import Optional
-import csv
 from theme_manager import Theme
 
 class StudyModes:
