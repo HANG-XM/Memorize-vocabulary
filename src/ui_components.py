@@ -49,15 +49,20 @@ class AnimatedButton(QPushButton):
         self.setStyleSheet(f"background-color: {value.name()}; color: white; border: none; padding: 8px;")
     
     def enterEvent(self, event):
-        if hasattr(self.parent(), 'theme_manager'):
-            theme_colors = self.parent().theme_manager._themes[self.parent().theme_manager.get_current_theme()]
+        # 缓存主题管理器引用，避免重复属性查找
+        parent = self.parent()
+        if parent and hasattr(parent, 'theme_manager'):
+            theme_manager = parent.theme_manager
+            theme_colors = theme_manager._themes[theme_manager.get_current_theme()]
             self.animation.setEndValue(QColor(theme_colors['button_hover']))
             self.animation.start()
         super().enterEvent(event)
     
     def leaveEvent(self, event):
-        if hasattr(self.parent(), 'theme_manager'):
-            theme_colors = self.parent().theme_manager._themes[self.parent().theme_manager.get_current_theme()]
+        parent = self.parent()
+        if parent and hasattr(parent, 'theme_manager'):
+            theme_manager = parent.theme_manager
+            theme_colors = theme_manager._themes[theme_manager.get_current_theme()]
             self.animation.setEndValue(QColor(theme_colors['button']))
             self.animation.start()
         super().leaveEvent(event)
@@ -167,7 +172,9 @@ class UICreator:
         """创建返回按钮"""
         btn_back = AnimatedButton('返回')
         btn_back.setup_theme_style(theme_colors)
-        btn_back.clicked.connect(lambda: main_window.switch_page(main_window.main_page))
+        # 使用partial避免lambda函数创建开销
+        from functools import partial
+        btn_back.clicked.connect(partial(main_window.switch_page, main_window.main_page))
         layout.addWidget(btn_back)
         return btn_back
     
@@ -179,10 +186,13 @@ class UICreator:
         btn = AnimatedButton(text)
         btn.setup_theme_style(theme_colors)
         
+        # 使用partial优化连接性能
+        from functools import partial
         if target_page == 'study':
-            btn.clicked.connect(lambda: StudyModes.start_study(main_window))
+            btn.clicked.connect(partial(StudyModes.start_study, main_window))
         else:
-            btn.clicked.connect(lambda: main_window.switch_page(getattr(main_window, f'{target_page}_page')))
+            target_page_obj = getattr(main_window, f'{target_page}_page')
+            btn.clicked.connect(partial(main_window.switch_page, target_page_obj))
         
         card_layout.addWidget(btn)
         return card

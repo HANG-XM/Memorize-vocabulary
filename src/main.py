@@ -123,31 +123,40 @@ class MainWindow(QMainWindow):
         self.update_children_theme(self.centralWidget(), theme_colors)
 
     def update_children_theme(self, widget, theme_colors):
-        for child in widget.children():
-            if isinstance(child, AnimatedButton):
-                child.setStyleSheet(f"""
-                    QPushButton {{
-                        background-color: {theme_colors['button']};
-                        color: {theme_colors['text']};
-                        border: 1px solid {theme_colors['border']};
-                        padding: 8px 16px;
-                        border-radius: 4px;
-                        font-weight: 500;
-                    }}
-                    QPushButton:hover {{
-                        background-color: {theme_colors['button_hover']};
-                        border: 1px solid {theme_colors['accent']};
-                    }}
-                    QPushButton:pressed {{
-                        background-color: {theme_colors['accent']};
-                        color: white;
-                    }}
-                    QPushButton:disabled {{
-                        background-color: {theme_colors['border']};
-                        color: {theme_colors['secondary']};
-                    }}
-                """)
-            self.update_children_theme(child, theme_colors)
+        """优化主题更新性能 - 预编译样式表"""
+        # 预编译样式表，避免重复字符串格式化
+        button_style = f"""
+            QPushButton {{
+                background-color: {theme_colors['button']};
+                color: {theme_colors['text']};
+                border: 1px solid {theme_colors['border']};
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{
+                background-color: {theme_colors['button_hover']};
+                border: 1px solid {theme_colors['accent']};
+            }}
+            QPushButton:pressed {{
+                background-color: {theme_colors['accent']};
+                color: white;
+            }}
+            QPushButton:disabled {{
+                background-color: {theme_colors['border']};
+                color: {theme_colors['secondary']};
+            }}
+        """
+        
+        # 使用广度优先搜索，避免递归深度过大
+        widgets_to_process = [widget]
+        while widgets_to_process:
+            current_widget = widgets_to_process.pop(0)
+            
+            for child in current_widget.children():
+                if isinstance(child, AnimatedButton):
+                    child.setStyleSheet(button_style)
+                widgets_to_process.append(child)
             
     def update_stats(self):
         self.stats_list.clear()

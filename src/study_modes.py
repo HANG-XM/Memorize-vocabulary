@@ -88,12 +88,22 @@ class StudyModes:
                     correct_meaning
                 )
         
-        # 更新进度条
-        for i in range(main_window.study_layout.count()):
-            widget = main_window.study_layout.itemAt(i).widget()
-            if isinstance(widget, QProgressBar):
-                widget.setValue(StudyModes.current_word_index)
-                break
+        # 优化进度条更新 - 缓存进度条引用
+        if hasattr(main_window, '_cached_progress_bar'):
+            progress_bar = main_window._cached_progress_bar
+            if progress_bar:
+                progress_bar.setValue(StudyModes.current_word_index)
+        else:
+            # 首次查找并缓存进度条
+            progress_bar = None
+            for i in range(main_window.study_layout.count()):
+                widget = main_window.study_layout.itemAt(i).widget()
+                if isinstance(widget, QProgressBar):
+                    progress_bar = widget
+                    main_window._cached_progress_bar = progress_bar
+                    break
+            if progress_bar:
+                progress_bar.setValue(StudyModes.current_word_index)
         
         # 记录学习数据
         if main_window:
@@ -263,14 +273,22 @@ class StudyModes:
                 meaning
             )
         
-        # 更新进度条
-        progress_bar = None
-        for i in range(main_window.study_layout.count()):
-            widget = main_window.study_layout.itemAt(i).widget()
-            if isinstance(widget, QProgressBar):
-                progress_bar = widget
+        # 优化进度条更新 - 使用缓存
+        if hasattr(main_window, '_cached_progress_bar'):
+            progress_bar = main_window._cached_progress_bar
+            if progress_bar:
                 progress_bar.setValue(StudyModes.current_word_index)
-                break
+        else:
+            # 首次查找并缓存进度条
+            progress_bar = None
+            for i in range(main_window.study_layout.count()):
+                widget = main_window.study_layout.itemAt(i).widget()
+                if isinstance(widget, QProgressBar):
+                    progress_bar = widget
+                    main_window._cached_progress_bar = progress_bar
+                    break
+            if progress_bar:
+                progress_bar.setValue(StudyModes.current_word_index)
         
         # 记录学习数据
         vocab_id = getattr(main_window, 'current_vocab_id', None)
@@ -325,12 +343,22 @@ class StudyModes:
                 correct_meaning
             )
         
-        # 更新进度条
-        for i in range(main_window.study_layout.count()):
-            widget = main_window.study_layout.itemAt(i).widget()
-            if isinstance(widget, QProgressBar):
-                widget.setValue(StudyModes.current_word_index)
-                break
+        # 优化进度条更新 - 使用缓存
+        if hasattr(main_window, '_cached_progress_bar'):
+            progress_bar = main_window._cached_progress_bar
+            if progress_bar:
+                progress_bar.setValue(StudyModes.current_word_index)
+        else:
+            # 首次查找并缓存进度条
+            progress_bar = None
+            for i in range(main_window.study_layout.count()):
+                widget = main_window.study_layout.itemAt(i).widget()
+                if isinstance(widget, QProgressBar):
+                    progress_bar = widget
+                    main_window._cached_progress_bar = progress_bar
+                    break
+            if progress_bar:
+                progress_bar.setValue(StudyModes.current_word_index)
         
         # 记录学习数据
         vocab_id = getattr(main_window, 'current_vocab_id', None)
@@ -384,11 +412,24 @@ class StudyModes:
             StudyModes.total_words = len(words)
             StudyModes.correct_count = 0
         
-        # 清除现有内容
-        while main_window.study_layout.count():
-            item = main_window.study_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        # 优化布局清理 - 批量删除
+        items_to_delete = []
+        for i in range(main_window.study_layout.count()):
+            item = main_window.study_layout.itemAt(i)
+            if item and item.widget():
+                items_to_delete.append(item.widget())
+        
+        # 清除布局项
+        for i in reversed(range(main_window.study_layout.count())):
+            main_window.study_layout.takeAt(i)
+        
+        # 批量删除widget
+        for widget in items_to_delete:
+            widget.deleteLater()
+        
+        # 清除进度条缓存
+        if hasattr(main_window, '_cached_progress_bar'):
+            delattr(main_window, '_cached_progress_bar')
         
         main_window.current_word = random.choice(words)
         
