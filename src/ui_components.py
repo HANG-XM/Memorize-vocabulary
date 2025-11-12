@@ -24,18 +24,26 @@ class AnimatedButton(QPushButton):
                 background-color: {theme_colors['button']};
                 color: {theme_colors['text']};
                 border: 1px solid {theme_colors['border']};
-                padding: 8px 16px;
-                border-radius: 4px;
+                padding: 10px 20px;
+                border-radius: 6px;
                 font-weight: 500;
-                min-width: 80px;
+                font-size: 14px;
+                min-width: 100px;
             }}
             QPushButton:hover {{
                 background-color: {theme_colors['button_hover']};
-                border: 1px solid {theme_colors['accent']};
+                border: 2px solid {theme_colors['accent']};
+                padding: 9px 19px;
             }}
             QPushButton:pressed {{
                 background-color: {theme_colors['accent']};
                 color: white;
+                border: 2px solid {theme_colors['accent']};
+            }}
+            QPushButton:disabled {{
+                background-color: {theme_colors['border_light']};
+                color: {theme_colors['text_secondary']};
+                border: 1px solid {theme_colors['border']};
             }}
         """)
 
