@@ -1,7 +1,8 @@
 from PyQt6.QtWidgets import (
     QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QLineEdit, QTextEdit, QListWidget, QComboBox, QRadioButton,
-    QButtonGroup, QStackedWidget, QFrame, QInputDialog, QDialog
+    QButtonGroup, QStackedWidget, QFrame, QInputDialog, QDialog,
+    QCheckBox, QProgressBar, QScrollArea
 )
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, pyqtProperty, QRect, Qt, QParallelAnimationGroup, QSequentialAnimationGroup
 from PyQt6.QtGui import QColor, QCursor, QFont, QPainter, QLinearGradient
@@ -618,3 +619,163 @@ class UICreator:
         main_window.study_area = QWidget()
         main_window.study_layout = QVBoxLayout(main_window.study_area)
         layout.addWidget(main_window.study_area)
+
+    @staticmethod
+    def apply_theme_to_window(main_window, theme_name):
+        """应用主题到主窗口"""
+        from theme_manager import Theme
+        theme_colors = main_window.theme_manager._themes[Theme(theme_name)]
+        
+        # 设置主窗口样式
+        main_window.setStyleSheet(f"""
+            QMainWindow {{
+                background-color: {theme_colors['background']};
+                color: {theme_colors['text']};
+            }}
+            QLabel {{
+                color: {theme_colors['text']};
+                font-size: 14px;
+            }}
+            QLineEdit, QTextEdit {{
+                background-color: {theme_colors['button']};
+                color: {theme_colors['text']};
+                border: 1px solid {theme_colors['border']};
+                padding: 5px;
+                border-radius: 4px;
+            }}
+            QLineEdit:focus, QTextEdit:focus {{
+                border: 2px solid {theme_colors['accent']};
+            }}
+            QListWidget {{
+                background-color: {theme_colors['list_bg']};
+                color: {theme_colors['list_text']};
+                border: 1px solid {theme_colors['border']};
+                border-radius: 4px;
+                padding: 5px;
+            }}
+            QListWidget::item {{
+                padding: 5px;
+                border-bottom: 1px solid {theme_colors['border']};
+            }}
+            QListWidget::item:selected {{
+                background-color: {theme_colors['list_selected']};
+                color: {theme_colors['text']};
+            }}
+            QComboBox {{
+                background-color: {theme_colors['combo_bg']};
+                color: {theme_colors['combo_text']};
+                border: 1px solid {theme_colors['border']};
+                padding: 5px;
+                border-radius: 4px;
+            }}
+            QComboBox::drop-down {{
+                border: none;
+                width: 20px;
+            }}
+            QComboBox::down-arrow {{
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid {theme_colors['combo_text']};
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {theme_colors['combo_bg']};
+                color: {theme_colors['combo_text']};
+                selection-background-color: {theme_colors['list_selected']};
+            }}
+            QRadioButton {{
+                color: {theme_colors['radio_text']};
+                spacing: 8px;
+            }}
+            QRadioButton::indicator {{
+                width: 16px;
+                height: 16px;
+                border: 2px solid {theme_colors['border']};
+                border-radius: 8px;
+                background-color: {theme_colors['button']};
+            }}
+            QRadioButton::indicator:checked {{
+                background-color: {theme_colors['radio_indicator']};
+                border-color: {theme_colors['radio_indicator']};
+            }}
+            QRadioButton::indicator:hover {{
+                border-color: {theme_colors['accent']};
+            }}
+            QCheckBox {{
+                color: {theme_colors['text']};
+                spacing: 8px;
+                font-weight: 500;
+                background-color: transparent;
+            }}
+            QCheckBox::indicator {{
+                width: 16px;
+                height: 16px;
+                border: 2px solid {theme_colors['border']};
+                border-radius: 4px;
+                background-color: {theme_colors['button']};
+            }}
+            QCheckBox::indicator:checked {{
+                background-color: {theme_colors['accent']};
+                border-color: {theme_colors['accent']};
+            }}
+            QCheckBox::indicator:hover {{
+                border-color: {theme_colors['accent']};
+            }}
+            QCheckBox:disabled {{
+                color: {theme_colors['text_secondary']};
+            }}
+            QCheckBox::indicator:disabled {{
+                background-color: {theme_colors['border_light']};
+                border-color: {theme_colors['border']};
+            }}
+            QProgressBar {{
+                border: 1px solid {theme_colors['border']};
+                border-radius: 4px;
+                text-align: center;
+                color: {theme_colors['text']};
+            }}
+            QProgressBar::chunk {{
+                background-color: {theme_colors['accent']};
+                border-radius: 3px;
+            }}
+        """)
+        
+        # 更新所有子窗口部件
+        UICreator._update_children_theme(main_window.centralWidget(), theme_colors)
+
+    @staticmethod
+    def _update_children_theme(widget, theme_colors):
+        """优化主题更新性能 - 预编译样式表"""
+        # 预编译样式表，避免重复字符串格式化
+        button_style = f"""
+            QPushButton {{
+                background-color: {theme_colors['button']};
+                color: {theme_colors['text']};
+                border: 1px solid {theme_colors['border']};
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{
+                background-color: {theme_colors['button_hover']};
+                border: 1px solid {theme_colors['accent']};
+            }}
+            QPushButton:pressed {{
+                background-color: {theme_colors['accent']};
+                color: {theme_colors['text']};
+            }}
+            QPushButton:disabled {{
+                background-color: {theme_colors['border']};
+                color: {theme_colors['secondary']};
+            }}
+        """
+        
+        # 使用广度优先搜索，避免递归深度过大
+        widgets_to_process = [widget]
+        while widgets_to_process:
+            current_widget = widgets_to_process.pop(0)
+            
+            for child in current_widget.children():
+                if isinstance(child, AnimatedButton):
+                    child.setStyleSheet(button_style)
+                widgets_to_process.append(child)
