@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
             }}
             QListWidget::item:selected {{
                 background-color: {theme_colors['list_selected']};
-                color: white;
+                color: {theme_colors['text']};
             }}
             QComboBox {{
                 background-color: {theme_colors['combo_bg']};
@@ -107,6 +107,33 @@ class MainWindow(QMainWindow):
             QRadioButton::indicator:hover {{
                 border-color: {theme_colors['accent']};
             }}
+            QCheckBox {{
+                color: {theme_colors['text']};
+                spacing: 8px;
+                font-weight: 500;
+                background-color: transparent;
+            }}
+            QCheckBox::indicator {{
+                width: 16px;
+                height: 16px;
+                border: 2px solid {theme_colors['border']};
+                border-radius: 4px;
+                background-color: {theme_colors['button']};
+            }}
+            QCheckBox::indicator:checked {{
+                background-color: {theme_colors['accent']};
+                border-color: {theme_colors['accent']};
+            }}
+            QCheckBox::indicator:hover {{
+                border-color: {theme_colors['accent']};
+            }}
+            QCheckBox:disabled {{
+                color: {theme_colors['text_secondary']};
+            }}
+            QCheckBox::indicator:disabled {{
+                background-color: {theme_colors['border_light']};
+                border-color: {theme_colors['border']};
+            }}
             QProgressBar {{
                 border: 1px solid {theme_colors['border']};
                 border-radius: 4px;
@@ -140,7 +167,7 @@ class MainWindow(QMainWindow):
             }}
             QPushButton:pressed {{
                 background-color: {theme_colors['accent']};
-                color: white;
+                color: {theme_colors['text']};
             }}
             QPushButton:disabled {{
                 background-color: {theme_colors['border']};

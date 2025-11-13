@@ -37,7 +37,7 @@ class AnimatedButton(QPushButton):
             }}
             QPushButton:pressed {{
                 background-color: {theme_colors['accent']};
-                color: white;
+                color: {theme_colors['text']};
                 border: 2px solid {theme_colors['accent']};
             }}
             QPushButton:disabled {{
@@ -54,7 +54,29 @@ class AnimatedButton(QPushButton):
     @color.setter
     def color(self, value):
         self._color = value
-        self.setStyleSheet(f"background-color: {value.name()}; color: white; border: none; padding: 8px;")
+        # 获取当前主题颜色以保持边框样式
+        parent = self.parent()
+        if parent and hasattr(parent, 'theme_manager'):
+            theme_manager = parent.theme_manager
+            theme_colors = theme_manager._themes[theme_manager.get_current_theme()]
+            # 根据背景色亮度自动选择文字颜色，同时保持主题边框
+            brightness = value.red() * 0.299 + value.green() * 0.587 + value.blue() * 0.114
+            text_color = "white" if brightness < 128 else "black"
+            border_color = theme_colors['accent'] if brightness < 128 else theme_colors['border']
+            self.setStyleSheet(f"""
+                background-color: {value.name()}; 
+                color: {text_color}; 
+                border: 2px solid {border_color};
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: 500;
+                font-size: 14px;
+            """)
+        else:
+            # 根据背景色亮度自动选择文字颜色
+            brightness = value.red() * 0.299 + value.green() * 0.587 + value.blue() * 0.114
+            text_color = "white" if brightness < 128 else "black"
+            self.setStyleSheet(f"background-color: {value.name()}; color: {text_color}; border: none; padding: 8px;")
     
     def enterEvent(self, event):
         # 缓存主题管理器引用，避免重复属性查找
@@ -62,7 +84,8 @@ class AnimatedButton(QPushButton):
         if parent and hasattr(parent, 'theme_manager'):
             theme_manager = parent.theme_manager
             theme_colors = theme_manager._themes[theme_manager.get_current_theme()]
-            self.animation.setEndValue(QColor(theme_colors['button_hover']))
+            # 使用主题的主色调而不是固定的白色
+            self.animation.setEndValue(QColor(theme_colors['accent']))
             self.animation.start()
         super().enterEvent(event)
     
@@ -148,9 +171,18 @@ class AnimatedCard(QFrame):
             shadow_intensity = min(255, 100 + value * 15)
             border_color = f"rgba(0,0,0,{shadow_intensity/255:.2f})"
         
+        # 获取当前主题颜色
+        parent = self.parent()
+        if parent and hasattr(parent, 'theme_manager'):
+            theme_manager = parent.theme_manager
+            theme_colors = theme_manager._themes[theme_manager.get_current_theme()]
+            bg_color = theme_colors['background_secondary']
+        else:
+            bg_color = 'white'
+        
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: white;
+                background-color: {bg_color};
                 border-radius: 8px;
                 border: 2px solid {border_color};
                 margin: {value}px;
@@ -508,6 +540,7 @@ class UICreator:
         for type_name, checkbox in type_checkboxes.items():
             if type_name == 'word':
                 checkbox.setChecked(True)
+            # 不设置具体样式，使用全局QCheckBox样式
             vocab_layout.addWidget(checkbox)
             setattr(main_window, f'settings_checkbox_{type_name}', checkbox)
         
